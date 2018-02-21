@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (C) 2008-2012 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -33,12 +33,16 @@ EndScriptData */
 #define SPELL_TREAT             24715
 
 #define LOCALE_TRICK_OR_TREAT_0 "Trick or Treat!"
+#define LOCALE_TRICK_OR_TREAT_1 u8"과자 안 주면 장난칠 테야!"
 #define LOCALE_TRICK_OR_TREAT_2 "Des bonbons ou des blagues!"
-#define LOCALE_TRICK_OR_TREAT_3 "Süßes oder Saures!"
+#define LOCALE_TRICK_OR_TREAT_3 "oder Saures!"
 #define LOCALE_TRICK_OR_TREAT_6 "¡Truco o trato!"
 
 #define LOCALE_INNKEEPER_0 "Make this inn my home."
-#define LOCALE_INNKEEPER_3 "Ich möchte dieses Gasthaus zu meinem Heimatort machen."
+#define LOCALE_INNKEEPER_1 u8"이곳을 귀환장소로 지정 합니다."
+#define LOCALE_INNKEEPER_3 "Ich dieses Gasthaus zu meinem Heimatort machen."
+
+#define LOCALE_BROWSE_GOODS_1 u8"당신이 판매하는 상품을 보구싶어요."
 
 class npc_innkeeper : public CreatureScript
 {
@@ -50,11 +54,12 @@ public:
         if (IsEventActive(HALLOWEEN_EVENTID) && !player->HasAura(SPELL_TRICK_OR_TREATED))
         {
             const char* localizedEntry;
-            switch (player->GetSession()->GetSessionDbcLocale())
+            switch (player->GetSession()->GetSessionDbLocaleIndex())
             {
-                case LOCALE_frFR: localizedEntry = LOCALE_TRICK_OR_TREAT_2; break;
-                case LOCALE_deDE: localizedEntry = LOCALE_TRICK_OR_TREAT_3; break;
-                case LOCALE_esES: localizedEntry = LOCALE_TRICK_OR_TREAT_6; break;
+                case LOCALE_koKR: localizedEntry = LOCALE_TRICK_OR_TREAT_1; break;
+				case LOCALE_frFR: localizedEntry = LOCALE_TRICK_OR_TREAT_2; break;
+				case LOCALE_deDE: localizedEntry = LOCALE_TRICK_OR_TREAT_3; break;
+				case LOCALE_esES: localizedEntry = LOCALE_TRICK_OR_TREAT_6; break;
                 case LOCALE_enUS: default: localizedEntry = LOCALE_TRICK_OR_TREAT_0;
             }
             player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, localizedEntry, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+HALLOWEEN_EVENTID);
@@ -63,15 +68,25 @@ public:
         if (creature->isQuestGiver())
             player->PrepareQuestMenu(creature->GetGUID());
 
-        if (creature->isVendor())
-            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_VENDOR, GOSSIP_TEXT_BROWSE_GOODS, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_TRADE);
+		if (creature->isVendor())
+		{
+			const char* localizedEntry;
+			switch (player->GetSession()->GetSessionDbLocaleIndex())
+			{
+				case LOCALE_koKR: localizedEntry = LOCALE_BROWSE_GOODS_1; break;
+				case LOCALE_enUS: default: localizedEntry = GOSSIP_TEXT_BROWSE_GOODS;
+			}
+			player->ADD_GOSSIP_ITEM(GOSSIP_ICON_VENDOR, localizedEntry, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_TRADE);
+		}
+            
 
         if (creature->isInnkeeper())
         {
             const char* localizedEntry;
-            switch (player->GetSession()->GetSessionDbcLocale())
+            switch (player->GetSession()->GetSessionDbLocaleIndex())
             {
-                case LOCALE_deDE: localizedEntry = LOCALE_INNKEEPER_3; break;
+				case LOCALE_koKR: localizedEntry = LOCALE_INNKEEPER_1; break;
+				case LOCALE_deDE: localizedEntry = LOCALE_INNKEEPER_3; break;
                 case LOCALE_enUS: default: localizedEntry = LOCALE_INNKEEPER_0;
             }
             player->ADD_GOSSIP_ITEM(GOSSIP_ICON_INTERACT_1, localizedEntry, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INN);
