@@ -459,7 +459,7 @@ class AuraScript : public _SpellScript
         typedef void(CLASSNAME::*AuraUpdateFnType)(uint32); \
         typedef void(CLASSNAME::*AuraEffectUpdateFnType)(uint32, AuraEffectPtr); \
         typedef void(CLASSNAME::*AuraEffectUpdatePeriodicFnType)(AuraEffectPtr); \
-        typedef void(CLASSNAME::*AuraEffectCalcAmountFnType)(constAuraEffectPtr, int32 &, bool &); \
+        typedef bool(CLASSNAME::*AuraEffectCalcAmountFnType)(constAuraEffectPtr, int32 &, bool &); \
         typedef void(CLASSNAME::*AuraEffectCalcPeriodicFnType)(constAuraEffectPtr, bool &, int32 &); \
         typedef void(CLASSNAME::*AuraEffectCalcSpellModFnType)(constAuraEffectPtr, SpellModifier* &); \
         typedef void(CLASSNAME::*AuraEffectAbsorbFnType)(AuraEffectPtr, DamageInfo &, uint32 &); \
@@ -528,7 +528,7 @@ class AuraScript : public _SpellScript
         {
             public:
                 EffectCalcAmountHandler(AuraEffectCalcAmountFnType _pEffectHandlerScript, uint8 _effIndex, uint16 _effName);
-                void Call(AuraScript* auraScript, constAuraEffectPtr aurEff, int32 & amount, bool & canBeRecalculated);
+                bool Call(AuraScript* auraScript, constAuraEffectPtr aurEff, int32 & amount, bool & canBeRecalculated);
             private:
                 AuraEffectCalcAmountFnType pEffectHandlerScript;
         };
@@ -560,7 +560,7 @@ class AuraScript : public _SpellScript
         class EffectAbsorbHandler : public EffectBase
         {
             public:
-                EffectAbsorbHandler(AuraEffectAbsorbFnType _pEffectHandlerScript, uint8 _effIndex);
+				EffectAbsorbHandler(AuraEffectAbsorbFnType _pEffectHandlerScript, uint8 _effIndex, uint16 _effName);
                 void Call(AuraScript* auraScript, AuraEffectPtr aurEff, DamageInfo & dmgInfo, uint32 & absorbAmount);
             private:
                 AuraEffectAbsorbFnType pEffectHandlerScript;
@@ -609,7 +609,7 @@ class AuraScript : public _SpellScript
         class EffectCalcPeriodicHandlerFunction : public AuraScript::EffectCalcPeriodicHandler { public: EffectCalcPeriodicHandlerFunction(AuraEffectCalcPeriodicFnType _pEffectHandlerScript, uint8 _effIndex, uint16 _effName) : AuraScript::EffectCalcPeriodicHandler((AuraScript::AuraEffectCalcPeriodicFnType)_pEffectHandlerScript, _effIndex, _effName) {} }; \
         class EffectCalcSpellModHandlerFunction : public AuraScript::EffectCalcSpellModHandler { public: EffectCalcSpellModHandlerFunction(AuraEffectCalcSpellModFnType _pEffectHandlerScript, uint8 _effIndex, uint16 _effName) : AuraScript::EffectCalcSpellModHandler((AuraScript::AuraEffectCalcSpellModFnType)_pEffectHandlerScript, _effIndex, _effName) {} }; \
         class EffectApplyHandlerFunction : public AuraScript::EffectApplyHandler { public: EffectApplyHandlerFunction(AuraEffectApplicationModeFnType _pEffectHandlerScript, uint8 _effIndex, uint16 _effName, AuraEffectHandleModes _mode) : AuraScript::EffectApplyHandler((AuraScript::AuraEffectApplicationModeFnType)_pEffectHandlerScript, _effIndex, _effName, _mode) {} }; \
-        class EffectAbsorbFunction : public AuraScript::EffectAbsorbHandler { public: EffectAbsorbFunction(AuraEffectAbsorbFnType _pEffectHandlerScript, uint8 _effIndex) : AuraScript::EffectAbsorbHandler((AuraScript::AuraEffectAbsorbFnType)_pEffectHandlerScript, _effIndex) {} }; \
+		class EffectAbsorbFunction : public AuraScript::EffectAbsorbHandler { public: EffectAbsorbFunction(AuraEffectAbsorbFnType _pEffectHandlerScript, uint8 _effIndex, uint16 _effName) : AuraScript::EffectAbsorbHandler((AuraScript::AuraEffectAbsorbFnType)_pEffectHandlerScript, _effIndex, _effName) {} }; \
         class EffectManaShieldFunction : public AuraScript::EffectManaShieldHandler { public: EffectManaShieldFunction(AuraEffectAbsorbFnType _pEffectHandlerScript, uint8 _effIndex) : AuraScript::EffectManaShieldHandler((AuraScript::AuraEffectAbsorbFnType)_pEffectHandlerScript, _effIndex) {} }; \
         class CheckProcHandlerFunction : public AuraScript::CheckProcHandler { public: CheckProcHandlerFunction(AuraCheckProcFnType handlerScript) : AuraScript::CheckProcHandler((AuraScript::AuraCheckProcFnType)handlerScript) {} }; \
         class AuraProcHandlerFunction : public AuraScript::AuraProcHandler { public: AuraProcHandlerFunction(AuraProcFnType handlerScript) : AuraScript::AuraProcHandler((AuraScript::AuraProcFnType)handlerScript) {} }; \
@@ -732,7 +732,7 @@ class AuraScript : public _SpellScript
         // example: OnEffectAbsorb += AuraEffectAbsorbFn(class::function, EffectIndexSpecifier);
         // where function is: void function (constAuraEffectPtr aurEff, DamageInfo& dmgInfo, uint32& absorbAmount);
         HookList<EffectAbsorbHandler> OnEffectAbsorb;
-        #define AuraEffectAbsorbFn(F, I) EffectAbsorbFunction(&F, I)
+		#define AuraEffectAbsorbFn(F, I, N) EffectAbsorbFunction(&F, I, N)
 
         // executed after absorb aura effect reduced damage to target - absorbAmount is real amount absorbed by aura
         // example: AfterEffectAbsorb += AuraEffectAbsorbFn(class::function, EffectIndexSpecifier);

@@ -21,6 +21,15 @@
 #include "SpellScript.h"
 #include "SpellMgr.h"
 
+#define MEASURE_TIME_VOID(function, script, name, step, ...) uint32 _time = getMSTime(); function(__VA_ARGS__); _time = getMSTime() - _time; if (_time > step) sLog->OutTrinity("%s of %u take more than %u ms to execute - %u ms", name, script->GetId(), step, _time);
+#define MEASURE_TIME(function, script, name, step, result, ...) uint32 _time = getMSTime(); result = function(__VA_ARGS__); _time = getMSTime() - _time; if (_time > step) sLog->OutTrinity("%s of %u take more than %u ms to execute - %u ms", name, script->GetId(), step, _time);
+
+#define MEASURE_AURA_VOID(function, name, step, ...) MEASURE_TIME_VOID(function, auraScript, name, step, __VA_ARGS__)
+#define MEASURE_AURA(function, name, step, result, ...) MEASURE_TIME(function, auraScript, name, step, result, __VA_ARGS__)
+
+#define MEASURE_SPELL_VOID(function, name, step, ...) MEASURE_TIME_VOID(function, spellScript, name, step, __VA_ARGS__)
+#define MEASURE_SPELL(function, name, step, result, ...) MEASURE_TIME(function, spellScript, name, step, result, __VA_ARGS__)
+
 bool _SpellScript::_Validate(SpellInfo const* entry)
 {
     if (!Validate(entry))
@@ -797,9 +806,11 @@ AuraScript::EffectCalcAmountHandler::EffectCalcAmountHandler(AuraEffectCalcAmoun
     pEffectHandlerScript = _pEffectHandlerScript;
 }
 
-void AuraScript::EffectCalcAmountHandler::Call(AuraScript* auraScript, constAuraEffectPtr aurEff, int32& amount, bool& canBeRecalculated)
+bool AuraScript::EffectCalcAmountHandler::Call(AuraScript* auraScript, constAuraEffectPtr aurEff, int32& amount, bool& canBeRecalculated)
 {
-    (auraScript->*pEffectHandlerScript)(aurEff, amount, canBeRecalculated);
+	bool result;
+	MEASURE_AURA((auraScript->*pEffectHandlerScript), "AuraScript::EffectCalcAmountHandler", 1, result, aurEff, amount, canBeRecalculated);
+	return result;
 }
 
 AuraScript::EffectCalcPeriodicHandler::EffectCalcPeriodicHandler(AuraEffectCalcPeriodicFnType _pEffectHandlerScript, uint8 _effIndex, uint16 _effName)
@@ -837,7 +848,7 @@ void AuraScript::EffectApplyHandler::Call(AuraScript* auraScript, constAuraEffec
         (auraScript->*pEffectHandlerScript)(_aurEff, _mode);
 }
 
-AuraScript::EffectAbsorbHandler::EffectAbsorbHandler(AuraEffectAbsorbFnType _pEffectHandlerScript, uint8 _effIndex)
+AuraScript::EffectAbsorbHandler::EffectAbsorbHandler(AuraEffectAbsorbFnType _pEffectHandlerScript, uint8 _effIndex, uint16 _effName)
     : AuraScript::EffectBase(_effIndex, SPELL_AURA_SCHOOL_ABSORB)
 {
     pEffectHandlerScript = _pEffectHandlerScript;
