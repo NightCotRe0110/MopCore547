@@ -6976,6 +6976,18 @@ float Player::GetExpertiseDodgeOrParryReduction(WeaponAttackType attType) const
     return 0.0f;
 }
 
+float Player::GetPvpHealingBonus() const
+{
+	// Pvp healing cannot work in dungeons
+	if (Map* map = GetMap())
+		if (map->IsDungeon())
+			return 1.0f;
+
+	float pvpPower = (1 + GetFloatValue(PLAYER_FIELD_PVP_POWER_HEALING) / 100);
+
+	return pvpPower;
+}
+
 float Player::OCTRegenMPPerSpirit()
 {
     uint8 level = getLevel();
