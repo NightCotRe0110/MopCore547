@@ -54,7 +54,7 @@ class spell_mastery_shield_discipline : public SpellScriptLoader
         {
             PrepareAuraScript(spell_mastery_shield_discipline_AuraScript);
 
-            void CalculateAmount(constAuraEffectPtr , int32 & amount, bool & )
+            bool CalculateAmount(constAuraEffectPtr , int32 & amount, bool & )
             {
                 if (Unit* caster = GetCaster())
                 {
@@ -64,6 +64,7 @@ class spell_mastery_shield_discipline : public SpellScriptLoader
                         amount = int32(amount * Mastery);
                     }
                 }
+				return true;
             }
 
             void Register()

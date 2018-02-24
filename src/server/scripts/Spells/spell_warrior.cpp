@@ -244,7 +244,7 @@ class spell_warr_shield_barrier : public SpellScriptLoader
         {
             PrepareAuraScript(spell_warr_shield_barrier_AuraScript);
 
-            void CalculateAmount(constAuraEffectPtr /*aurEff*/, int32 & amount, bool & /*canBeRecalculated*/)
+            bool CalculateAmount(constAuraEffectPtr /*aurEff*/, int32 & amount, bool & /*canBeRecalculated*/)
             {
                 if (GetCaster())
                 {
@@ -265,6 +265,7 @@ class spell_warr_shield_barrier : public SpellScriptLoader
 
                     GetCaster()->SetPower(POWER_RAGE, GetCaster()->GetPower(POWER_RAGE) - usedrage * 10);
                 }
+				return true;
             }
             void Absorb(AuraEffectPtr /*auraEffect*/, DamageInfo& /*dmgInfo*/, uint32& absorbAmount)
             {
@@ -279,7 +280,7 @@ class spell_warr_shield_barrier : public SpellScriptLoader
             void Register()
             {
                 DoEffectCalcAmount += AuraEffectCalcAmountFn(spell_warr_shield_barrier_AuraScript::CalculateAmount, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB);
-                AfterEffectAbsorb += AuraEffectAbsorbFn(spell_warr_shield_barrier_AuraScript::Absorb, EFFECT_0);
+                AfterEffectAbsorb += AuraEffectAbsorbFn(spell_warr_shield_barrier_AuraScript::Absorb, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB);
             }
         };
 

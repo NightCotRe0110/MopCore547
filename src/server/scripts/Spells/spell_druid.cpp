@@ -167,7 +167,7 @@ class spell_dru_tooth_and_claw_absorb : public SpellScriptLoader
 
             void Register()
             {
-                OnEffectAbsorb += AuraEffectAbsorbFn(spell_dru_tooth_and_claw_absorb_AuraScript::OnAbsorb, EFFECT_1);
+                OnEffectAbsorb += AuraEffectAbsorbFn(spell_dru_tooth_and_claw_absorb_AuraScript::OnAbsorb, EFFECT_1, SPELL_AURA_SCHOOL_ABSORB);
             }
         };
 
@@ -1978,7 +1978,7 @@ class spell_dru_bear_hug : public SpellScriptLoader
         {
             PrepareAuraScript(spell_dru_bear_hug_AuraScript);
 
-            void CalculateAmount(constAuraEffectPtr /*aurEff*/, int32& amount, bool& /*canBeRecalculated*/)
+            bool CalculateAmount(constAuraEffectPtr /*aurEff*/, int32& amount, bool& /*canBeRecalculated*/)
             {
                 if (Unit* caster = GetCaster())
                 {
@@ -1987,6 +1987,7 @@ class spell_dru_bear_hug : public SpellScriptLoader
 
                     amount = caster->CountPctFromMaxHealth(amount);
                 }
+				return true;
             }
 
             void Register()
@@ -2571,10 +2572,11 @@ class spell_dru_wild_mushroom_growing : public SpellScriptLoader
                 return true;
             }
 
-            void CalculateAmount(constAuraEffectPtr /*aurEff*/, int32 &amount, bool & /*canBeRecalculated*/)
+            bool CalculateAmount(constAuraEffectPtr /*aurEff*/, int32 &amount, bool & /*canBeRecalculated*/)
             {
                 // Max amount : 200% of caster's health
                 amount = GetUnitOwner()->CountPctFromMaxHealth(amount);
+				return true;
             }
 
             void OnProc(constAuraEffectPtr aurEff, ProcEventInfo& eventInfo)
@@ -3838,11 +3840,13 @@ class spell_dru_swift_flight_passive : public SpellScriptLoader
                 return GetCaster()->GetTypeId() == TYPEID_PLAYER;
             }
 
-            void CalculateAmount(constAuraEffectPtr /*aurEff*/, int32 & amount, bool & /*canBeRecalculated*/)
+            bool CalculateAmount(constAuraEffectPtr /*aurEff*/, int32 & amount, bool & /*canBeRecalculated*/)
             {
                 if (Player* caster = GetCaster()->ToPlayer())
                     if (caster->GetSkillValue(SKILL_RIDING) >= 375)
                         amount = 310;
+
+				return true;
             }
 
             void Register()

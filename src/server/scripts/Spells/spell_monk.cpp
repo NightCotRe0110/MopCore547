@@ -231,38 +231,41 @@ class spell_monk_storm_earth_and_fire_stats : public SpellScriptLoader
                 }
             }
 
-            void CalculateReducedDamage(constAuraEffectPtr /*aurEff*/, int32 & amount, bool & /*canBeRecalculated*/)
+            bool CalculateReducedDamage(constAuraEffectPtr /*aurEff*/, int32 & amount, bool & /*canBeRecalculated*/)
             {
                 if (!GetCaster() || !GetCaster()->GetOwner())
-                    return;
+                    return false;
 
                 if (Unit* owner = GetCaster()->GetOwner())
                     if (AuraEffectPtr stormAura = owner->GetAuraEffect(SPELL_MONK_STORM_EARTH_AND_FIRE, EFFECT_1))
                         amount = stormAura->GetAmount();
+				return true;
             }
 
-            void CalculateHealing(constAuraEffectPtr /*aurEff*/, int32 & amount, bool & /*canBeRecalculated*/)
+            bool CalculateHealing(constAuraEffectPtr /*aurEff*/, int32 & amount, bool & /*canBeRecalculated*/)
             {
                 if (!GetCaster() || !GetCaster()->GetOwner())
-                    return;
+                    return false;
 
                 if (Unit* owner = GetCaster()->GetOwner())
                     amount = owner->GetTotalAuraModifier(SPELL_AURA_MOD_HEALING_DONE_PERCENT);
+				return true;
             }
 
-            void CalculateAttackPower(constAuraEffectPtr /*aurEff*/, int32 & amount, bool & /*canBeRecalculated*/)
+            bool CalculateAttackPower(constAuraEffectPtr /*aurEff*/, int32 & amount, bool & /*canBeRecalculated*/)
             {
                 if (!GetCaster() || !GetCaster()->GetOwner())
-                    return;
+                    return false;
 
                 if (Unit* owner = GetCaster()->GetOwner())
                     amount = owner->GetTotalAttackPowerValue(BASE_ATTACK);
+				return true;
             }
 
-            void CalculateHaste(constAuraEffectPtr /*aurEff*/, int32 & amount, bool & /*canBeRecalculated*/)
+            bool CalculateHaste(constAuraEffectPtr /*aurEff*/, int32 & amount, bool & /*canBeRecalculated*/)
             {
                 if (!GetCaster() || !GetCaster()->GetOwner())
-                    return;
+                    return false;
 
                 if (Player* owner = GetCaster()->GetOwner()->ToPlayer())
                 {
@@ -276,6 +279,7 @@ class spell_monk_storm_earth_and_fire_stats : public SpellScriptLoader
                         caster->ApplyPercentModFloatValue(UNIT_MOD_HASTE, ownerHaste, false);
                     }
                 }
+				return true;
             }
 
             void Register()
@@ -1155,9 +1159,10 @@ class spell_monk_dampen_harm : public SpellScriptLoader
                 return GetUnitOwner()->ToPlayer();
             }
 
-            void CalculateAmount(constAuraEffectPtr /*auraEffect*/, int32& amount, bool& /*canBeRecalculated*/)
+            bool CalculateAmount(constAuraEffectPtr /*auraEffect*/, int32& amount, bool& /*canBeRecalculated*/)
             {
                 amount = -1;
+				return true;
             }
 
             void Absorb(AuraEffectPtr auraEffect, DamageInfo& dmgInfo, uint32& absorbAmount)
@@ -1177,7 +1182,7 @@ class spell_monk_dampen_harm : public SpellScriptLoader
             void Register()
             {
                 DoEffectCalcAmount += AuraEffectCalcAmountFn(spell_monk_dampen_harm_AuraScript::CalculateAmount, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB);
-                OnEffectAbsorb += AuraEffectAbsorbFn(spell_monk_dampen_harm_AuraScript::Absorb, EFFECT_0);
+                OnEffectAbsorb += AuraEffectAbsorbFn(spell_monk_dampen_harm_AuraScript::Absorb, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB);
             }
         };
 
@@ -1475,10 +1480,10 @@ class spell_monk_guard : public SpellScriptLoader
         {
             PrepareAuraScript(spell_monk_guard_AuraScript);
 
-            void CalculateAmount(constAuraEffectPtr /*aurEff*/, int32 & amount, bool & /*canBeRecalculated*/)
+            bool CalculateAmount(constAuraEffectPtr /*aurEff*/, int32 & amount, bool & /*canBeRecalculated*/)
             {
                 if (!GetCaster())
-                    return;
+                    return false;
 
                 if (Player* _plr = GetCaster()->ToPlayer())
                 {
@@ -1500,6 +1505,7 @@ class spell_monk_guard : public SpellScriptLoader
                             _plr->CastCustomSpell(145051, SPELLVALUE_BASE_POINT0, CalculatePct(amount, 8), _plr, true);
                     }
                 }
+				return true;
             }
 
             void Register()
@@ -1597,14 +1603,15 @@ class spell_monk_zen_flight_check : public SpellScriptLoader
                 return GetCaster() && GetCaster()->GetTypeId() == TYPEID_PLAYER;
             }
 
-            void CalculateAmount(constAuraEffectPtr /*aurEff*/, int32 & amount, bool & /*canBeRecalculated*/)
+            bool CalculateAmount(constAuraEffectPtr /*aurEff*/, int32 & amount, bool & /*canBeRecalculated*/)
             {
                 if (!GetCaster())
-                    return;
+                    return false;
 
                 if (Player* caster = GetCaster()->ToPlayer())
                     if (caster->GetSkillValue(SKILL_RIDING) >= 375)
                         amount = 310;
+				return true;
             }
 
             void Register()
@@ -1784,10 +1791,11 @@ class spell_monk_touch_of_karma : public SpellScriptLoader
                 return true;
             }
 
-            void CalculateAmount(constAuraEffectPtr /*aurEff*/, int32 & amount, bool & /*canBeRecalculated*/)
+            bool CalculateAmount(constAuraEffectPtr /*aurEff*/, int32 & amount, bool & /*canBeRecalculated*/)
             {
                 if (GetCaster())
                     amount = GetCaster()->GetMaxHealth();
+				return true;
             }
 
             void OnAbsorb(AuraEffectPtr aurEff, DamageInfo& dmgInfo, uint32& absorbAmount)
@@ -1807,7 +1815,7 @@ class spell_monk_touch_of_karma : public SpellScriptLoader
             void Register()
             {
                 DoEffectCalcAmount += AuraEffectCalcAmountFn(spell_monk_touch_of_karma_AuraScript::CalculateAmount, EFFECT_1, SPELL_AURA_SCHOOL_ABSORB);
-                OnEffectAbsorb += AuraEffectAbsorbFn(spell_monk_touch_of_karma_AuraScript::OnAbsorb, EFFECT_1);
+                OnEffectAbsorb += AuraEffectAbsorbFn(spell_monk_touch_of_karma_AuraScript::OnAbsorb, EFFECT_1, SPELL_AURA_SCHOOL_ABSORB);
             }
         };
 

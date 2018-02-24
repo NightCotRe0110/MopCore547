@@ -191,10 +191,11 @@ class spell_mark_of_kazzak : public SpellScriptLoader
                 return true;
             }
 
-            void CalculateAmount(constAuraEffectPtr /*aurEff*/, int32& amount, bool& /*canBeRecalculated*/)
+            bool CalculateAmount(constAuraEffectPtr /*aurEff*/, int32& amount, bool& /*canBeRecalculated*/)
             {
                 if (Unit* owner = GetUnitOwner())
                     amount = CalculatePct(owner->GetPower(POWER_MANA), 5);
+				return true;
             }
 
             void OnPeriodic(constAuraEffectPtr aurEff)

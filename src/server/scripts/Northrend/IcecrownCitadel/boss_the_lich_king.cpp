@@ -3217,12 +3217,13 @@ class spell_the_lich_king_lights_favor : public SpellScriptLoader
                         effect->RecalculateAmount(caster);
             }
 
-            void CalculateBonus(constAuraEffectPtr /*aurEff*/, int32& amount, bool& canBeRecalculated)
+            bool CalculateBonus(constAuraEffectPtr /*aurEff*/, int32& amount, bool& canBeRecalculated)
             {
                 canBeRecalculated = true;
                 amount = 0;
                 if (Unit* caster = GetCaster())
                     amount = int32(caster->GetHealthPct());
+				return true;
             }
 
             void Register()

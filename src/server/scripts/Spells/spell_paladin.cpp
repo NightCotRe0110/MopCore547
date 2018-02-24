@@ -259,9 +259,10 @@ class spell_pal_hand_of_purity : public SpellScriptLoader
                 return GetUnitOwner()->ToPlayer();
             }
 
-            void CalculateAmount(constAuraEffectPtr /*auraEffect*/, int32& amount, bool& /*canBeRecalculated*/)
+            bool CalculateAmount(constAuraEffectPtr /*auraEffect*/, int32& amount, bool& /*canBeRecalculated*/)
             {
                 amount = -1;
+				return true;
             }
 
             void Absorb(AuraEffectPtr /*auraEffect*/, DamageInfo& dmgInfo, uint32& absorbAmount)
@@ -283,7 +284,7 @@ class spell_pal_hand_of_purity : public SpellScriptLoader
             void Register()
             {
                 DoEffectCalcAmount += AuraEffectCalcAmountFn(spell_pal_hand_of_purity_AuraScript::CalculateAmount, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB);
-                OnEffectAbsorb += AuraEffectAbsorbFn(spell_pal_hand_of_purity_AuraScript::Absorb, EFFECT_0);
+                OnEffectAbsorb += AuraEffectAbsorbFn(spell_pal_hand_of_purity_AuraScript::Absorb, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB);
             }
         };
 
@@ -626,10 +627,10 @@ class spell_pal_sacred_shield_absorb : public SpellScriptLoader
         {
             PrepareAuraScript(spell_pal_sacred_shield_absorb_AuraScript);
 
-            void CalculateAmount(constAuraEffectPtr , int32 & amount, bool & )
+            bool CalculateAmount(constAuraEffectPtr , int32 & amount, bool & )
             {
                 if (!GetCaster())
-                    return;
+                    return false;
 
                 if (Player* _player = GetCaster()->ToPlayer())
                 {
@@ -638,6 +639,7 @@ class spell_pal_sacred_shield_absorb : public SpellScriptLoader
                     else if (_player->GetSpecializationId(_player->GetActiveSpec()) != SPEC_PALADIN_HOLY)
                         amount = int32(30 + _player->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_HOLY) * 1.17f);
                 }
+				return true;
             }
 
             void Register()
@@ -662,11 +664,12 @@ class spell_pal_sacred_shield_absorb_holy : public SpellScriptLoader
         {
             PrepareAuraScript(spell_pal_sacred_shield_absorb_holy_AuraScript);
 
-            void CalculateAmount(constAuraEffectPtr , int32 & amount, bool & )
+            bool CalculateAmount(constAuraEffectPtr , int32 & amount, bool & )
             {
                 if (Player* _player = GetCaster()->ToPlayer())
                     if (_player->GetSpecializationId(_player->GetActiveSpec()) == SPEC_PALADIN_HOLY)
                         amount = int32(30 + _player->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_HOLY) * 1.17f);
+				return true;
             }
 
             void Register()
@@ -1415,10 +1418,11 @@ class spell_pal_ardent_defender : public SpellScriptLoader
                 return GetUnitOwner()->GetTypeId() == TYPEID_PLAYER;
             }
 
-            void CalculateAmount(constAuraEffectPtr aurEff, int32 & amount, bool & canBeRecalculated)
+            bool CalculateAmount(constAuraEffectPtr aurEff, int32 & amount, bool & canBeRecalculated)
             {
                 // Set absorbtion amount to unlimited
                 amount = -1;
+				return true;
             }
 
             void Absorb(AuraEffectPtr aurEff, DamageInfo & dmgInfo, uint32 & absorbAmount)
@@ -1442,7 +1446,7 @@ class spell_pal_ardent_defender : public SpellScriptLoader
             void Register()
             {
                  DoEffectCalcAmount += AuraEffectCalcAmountFn(spell_pal_ardent_defender_AuraScript::CalculateAmount, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB);
-                 OnEffectAbsorb += AuraEffectAbsorbFn(spell_pal_ardent_defender_AuraScript::Absorb, EFFECT_0);
+                 OnEffectAbsorb += AuraEffectAbsorbFn(spell_pal_ardent_defender_AuraScript::Absorb, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB);
             }
         };
 

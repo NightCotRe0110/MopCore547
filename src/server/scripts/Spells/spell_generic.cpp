@@ -60,7 +60,7 @@ class spell_gen_absorb0_hitlimit1 : public SpellScriptLoader
 
             void Register()
             {
-                 OnEffectAbsorb += AuraEffectAbsorbFn(spell_gen_absorb0_hitlimit1_AuraScript::Absorb, EFFECT_0);
+                 OnEffectAbsorb += AuraEffectAbsorbFn(spell_gen_absorb0_hitlimit1_AuraScript::Absorb, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB);
             }
         };
 
@@ -1274,7 +1274,7 @@ class spell_gen_vehicle_scaling : public SpellScriptLoader
                 return GetCaster() && GetCaster()->GetTypeId() == TYPEID_PLAYER;
             }
 
-            void CalculateAmount(constAuraEffectPtr /*aurEff*/, int32& amount, bool& /*canBeRecalculated*/)
+            bool CalculateAmount(constAuraEffectPtr /*aurEff*/, int32& amount, bool& /*canBeRecalculated*/)
             {
                 Unit* caster = GetCaster();
                 float factor;
@@ -1295,9 +1295,10 @@ class spell_gen_vehicle_scaling : public SpellScriptLoader
 
                 uint16 avgILvl = caster->ToPlayer()->GetAverageItemLevel();
                 if (avgILvl < baseItemLevel)
-                    return;                     // TODO: Research possibility of scaling down
+                    return false;                     // TODO: Research possibility of scaling down
 
                 amount = uint16((avgILvl - baseItemLevel) * factor);
+				return true;
             }
 
             void Register()
@@ -2583,12 +2584,13 @@ public:
     {
         PrepareAuraScript(spell_gen_dream_funnel_AuraScript);
 
-        void HandleEffectCalcAmount(constAuraEffectPtr /*aurEff*/, int32& amount, bool& canBeRecalculated)
+        bool HandleEffectCalcAmount(constAuraEffectPtr /*aurEff*/, int32& amount, bool& canBeRecalculated)
         {
             if (GetCaster())
                 amount = GetCaster()->GetMaxHealth() * 0.05f;
 
             canBeRecalculated = false;
+			return true;
         }
 
         void Register()
@@ -3094,12 +3096,13 @@ class spell_gen_gift_of_the_naaru : public SpellScriptLoader
         {
             PrepareAuraScript(spell_gen_gift_of_the_naaru_AuraScript);
 
-            void CalculateAmount(constAuraEffectPtr aurEff, int32& amount, bool& /*canBeRecalculated*/)
+            bool CalculateAmount(constAuraEffectPtr aurEff, int32& amount, bool& /*canBeRecalculated*/)
             {
                 if (!GetCaster())
-                    return;
+                    return false;
 
                 amount = GetCaster()->CountPctFromMaxHealth(4);
+				return true;
             }
 
             void Register()
