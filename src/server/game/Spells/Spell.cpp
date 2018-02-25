@@ -1824,6 +1824,45 @@ void Spell::SelectImplicitChainTargets(SpellEffIndex effIndex, SpellImplicitTarg
     if (Player* modOwner = m_caster->GetSpellModOwner())
         modOwner->ApplySpellMod(m_spellInfo->Id, SPELLMOD_JUMP_TARGETS, maxTargets, this);
 
+	/// Havoc
+	if (AuraEffectPtr l_Havoc = m_caster->GetAuraEffect(80240, EFFECT_1))
+	{
+		int8 l_ChargesToDrop = GetSpellInfo()->Id == 116858 ? 3 : 1;
+		if (GetSpellInfo()->SpellFamilyFlags & l_Havoc->GetSpellEffectInfo().SpellClassMask &&
+			l_Havoc->GetBase()->GetCharges() >= l_ChargesToDrop && target->ToUnit() && !target->ToUnit()->HasAura(80240))
+		{
+			std::list<Unit*> l_Targets;
+			m_caster->GetAttackableUnitListInRange(l_Targets, 40.0f);
+
+			l_Targets.remove(m_caster);
+
+			Unit* l_SecondTarget = nullptr;
+			for (auto l_It : l_Targets)
+			{
+				if (target->GetGUID() != l_It->GetGUID() && l_It->IsWithinDist(m_caster, 40.0f) && l_It->HasAura(80240, m_caster->GetGUID()))
+				{
+					l_SecondTarget = l_It;
+					break;
+				}
+			}
+
+			if (l_SecondTarget)
+			{
+				if (!m_HavocConsumed)
+				{
+					if (l_Havoc->GetBase()->ModCharges(-l_ChargesToDrop, AuraRemoveMode::AURA_REMOVE_BY_DEFAULT))
+						l_SecondTarget->RemoveAurasDueToSpell(l_Havoc->GetId());
+					else if (AuraPtr l_SecondHavoc = l_SecondTarget->GetAura(80240, m_caster->GetGUID()))
+						l_SecondHavoc->SetCharges(l_Havoc->GetBase()->GetCharges());
+
+					m_HavocConsumed = true; //< To prevent one charge consumption of Havoc per spell effect
+				}
+
+				AddUnitTarget(l_SecondTarget, effMask, false);
+			}
+		}
+	}
+
     if (maxTargets > 1)
     {
         // mark damage multipliers as used
@@ -3475,6 +3514,45 @@ void Spell::prepare(SpellCastTargets const* targets, constAuraEffectPtr triggere
         return;
     }
 
+	// Check for spells which have problems with instant cast effects, when effect procs while caster is casting
+	// Starsurge - 78674, Incinerate - 29722, Pyroblast - 11366, Avenger's Shield - 31935, Hamsting - 1715
+	if (this->GetSpellInfo()->Id == 78674 || this->GetSpellInfo()->Id == 29722 || GetSpellInfo()->Id == 114654 || this->GetSpellInfo()->Id == 11366
+		|| this->GetSpellInfo()->Id == 31935 || this->GetSpellInfo()->Id == 51505 || this->GetSpellInfo()->Id == 1715)
+	{
+		int instantAura = 0;
+		int instantAura2 = 0;
+		switch (this->GetSpellInfo()->Id)
+		{
+		case 78674:
+			instantAura = 93400;
+			break;
+		case 29722:
+		case 114654:
+			instantAura = 34936;
+			instantAura2 = 140076;
+			break;
+		case 11366:
+			instantAura = 48108;
+			break;
+		case 31935:
+			instantAura = 85416;
+			break;
+		case 51505:
+			instantAura = 77762;
+			break;
+		case 1715:
+			instantAura = 115945;
+			break;
+		default:
+			break;
+		}
+
+		m_caster->SetAuraBeforeInstantCast(false);
+
+		if ((m_caster->HasAura(instantAura) || m_caster->HasAura(instantAura2)) && !m_caster->GetAuraBeforeInstantCast())
+			m_caster->SetAuraBeforeInstantCast(true);
+	}
+
     // add aura counter for healing sphere
     if (this->GetSpellInfo()->Id == 115460 && !IsTriggered())
     {
@@ -4452,50 +4530,6 @@ void Spell::finish(bool ok)
         default: break;
     }
 
-    // Havoc
-    if (AuraPtr havoc = m_caster->GetAura(80240))
-    {
-        bool isAoe = true;
-        for (uint32 i = 0; i < MAX_SPELL_EFFECTS; ++i)
-            if (m_spellInfo->Effects[i].TargetA.GetTarget() == TARGET_UNIT_TARGET_ENEMY)
-                isAoe = false;
-
-        if (unitTarget && !unitTarget->HasAura(80240) && !isAoe)
-        {
-            std::list<Unit*> targets;
-            Unit* secondTarget = NULL;
-            m_caster->GetAttackableUnitListInRange(targets, 150.0f);
-
-            targets.remove(unitTarget);
-            targets.remove(m_caster);
-
-            for (auto itr : targets)
-            {
-                if (itr->IsWithinLOSInMap(m_caster) && itr->IsWithinDist(m_caster, 150.0f)
-                    && unitTarget->GetGUID() != itr->GetGUID() && itr->HasAura(80240, m_caster->GetGUID()))
-                {
-                    secondTarget = itr;
-                    break;
-                }
-            }
-
-            if (secondTarget && unitTarget->GetGUID() != secondTarget->GetGUID() && m_spellInfo->Id != 127802)
-            {
-                havoc->ModStackAmount(m_spellInfo->Id == 116858 ? -3 : -1);
-
-                if (AuraPtr secondHavoc = secondTarget->GetAura(80240, m_caster->GetGUID()))
-                    secondHavoc->ModStackAmount(m_spellInfo->Id == 116858 ? -3 : -1);
-                if (m_spellInfo->Id == 17877)
-                {
-                    int32 basePoints = m_caster->CalculateSpellDamage(secondTarget, m_spellInfo, 0);
-                    uint32 damage = m_caster->SpellDamageBonusDone(secondTarget, m_spellInfo, basePoints, SPELL_DIRECT_DAMAGE);
-                    m_caster->DealDamage(secondTarget, damage / 2, 0, SPELL_DIRECT_DAMAGE, SPELL_SCHOOL_MASK_SHADOW);
-                }
-                else
-                    m_caster->CastSpell(secondTarget, m_spellInfo->Id, true);
-            }
-        }
-    }
 }
 
 void Spell::SendCastResult(SpellCastResult result)

@@ -3921,61 +3921,17 @@ void Spell::EffectSummonType(SpellEffIndex effIndex)
       // Demonic Gateway : Remove old summon when cast an other gate
       if (m_spellInfo->Id == 113890 || m_spellInfo->Id == 113886)
       {
-            if (m_spellInfo->Id == 113890)
-            {
-                  std::list<Creature*> tempList;
-                  std::list<Creature*> gatewayList;
+		  std::list<Creature*> gatewayList;
 
-                  m_caster->GetCreatureListWithEntryInGrid(tempList, 59271, 500.0f);
+		  m_caster->GetCreatureListWithEntryInGrid(gatewayList, (m_spellInfo->Id == 113890) ? 59271 : 59262, 500.0f);
+		  for (Creature* l_Gateway : gatewayList)
+		  {
+			  Unit* owner = l_Gateway->GetOwner();
+			  if (!owner || owner != m_caster || !l_Gateway->isSummon())
+				  continue;
 
-                  if (!tempList.empty())
-                  {
-                        for (auto itr : tempList)
-                              gatewayList.push_back(itr);
-
-                        // Remove other players mushrooms
-                        for (std::list<Creature*>::iterator i = tempList.begin(); i != tempList.end(); ++i)
-                        {
-                              Unit* owner = (*i)->GetOwner();
-                              if (owner && owner == m_caster && (*i)->isSummon())
-                                    continue;
-
-                              gatewayList.remove((*i));
-                        }
-
-                        // 1 gateway max
-                        if ((int32)gatewayList.size() >= 1)
-                              gatewayList.back()->ToTempSummon()->UnSummon();
-                  }
-            }
-            else
-            {
-                  std::list<Creature*> tempList;
-                  std::list<Creature*> gatewayList;
-
-                  m_caster->GetCreatureListWithEntryInGrid(tempList, 59262, 500.0f);
-
-                  if (!tempList.empty())
-                  {
-                        for (auto itr : tempList)
-                              gatewayList.push_back(itr);
-
-                        // Remove other players mushrooms
-                        for (std::list<Creature*>::iterator i = tempList.begin(); i != tempList.end(); ++i)
-                        {
-                              Unit* owner = (*i)->GetOwner();
-                              if (owner && owner == m_caster && (*i)->isSummon())
-                                    continue;
-
-                              gatewayList.remove((*i));
-                        }
-
-                        // 1 gateway max
-                        if ((int32)gatewayList.size() >= 1)
-                              gatewayList.back()->ToTempSummon()->UnSummon();
-                  }
-
-            }
+			  l_Gateway->ToTempSummon()->UnSummon();
+		  }
       }
 
       // Primal Elementalist

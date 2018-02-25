@@ -776,6 +776,8 @@ class Spell
         bool m_skipCheck;
         uint32 m_auraScaleMask;
 
+		bool m_HavocConsumed;
+
         typedef std::map<uint32, SpellLogHelper> LogHelperMap;
         LogHelperMap m_effectExecuteData;
         SpellPowerEntry const* m_spellPowerData;

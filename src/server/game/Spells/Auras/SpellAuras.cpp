@@ -552,6 +552,8 @@ m_isRemoved(false), m_isSingleTarget(false), m_isUsingCharges(false)
     m_duration = m_maxDuration;
     m_procCharges = CalcMaxCharges(caster);
     m_isUsingCharges = m_procCharges != 0;
+	if (m_spellInfo->Id == 80240) ///< Havoc needs to start with 3 stacks and I'll go to hell for this
+		m_stackAmount = m_procCharges;
     // m_casterLevel = cast item level/caster level, caster level should be saved to db, confirmed with sniffs
 }
 
@@ -1018,7 +1020,19 @@ void Aura::SetCharges(uint8 charges)
 
     m_procCharges = charges;
     m_isUsingCharges = m_procCharges != 0;
-    SetNeedClientUpdateForTargets();
+
+	/// charges = stackAmount
+	switch (GetId())
+	{
+		case 80240:  ///< Havoc
+			SetStackAmount(charges);
+			break;
+
+		default:
+			break;
+	}
+
+	SetNeedClientUpdateForTargets();
 }
 
 uint8 Aura::CalcMaxCharges(Unit* caster) const
@@ -1952,22 +1966,22 @@ void Aura::HandleAuraSpecificMods(AuraApplication const* aurApp, Unit* caster, b
                 
                 break;
             case SPELLFAMILY_WARLOCK:
-                if (GetId() == 80240 && caster && !onReapply) // havoc
-                {
-                    if (caster->HasAura(146962)) // Glyph of havoc
-                        ModStackAmount(5);
-                    else
-                        ModStackAmount(2);
-                }
+				if (!caster)
+					break;
+
                 switch (GetId())
                 {
-                case 113858:
-                case  113860:
-                case  113861:
-                    if (caster && target)
-                        if (caster == target && caster->HasAura(138129))
-                            caster->CastSpell(caster, 138483, true);
-                    break;
+					case 113858:
+					case 113860:
+					case 113861:
+						if (caster && target)
+							if (caster == target && caster->HasAura(138129))
+								caster->CastSpell(caster, 138483, true);
+						break;
+					case 108683:
+						if (auto effect = caster->GetAuraEffect(117828, EFFECT_1))
+							effect->RecalculateAmount(caster);
+						break;
                 }
                 break;
             case SPELLFAMILY_WARRIOR:

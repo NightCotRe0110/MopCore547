@@ -758,6 +758,12 @@ int32 AuraEffect::CalculateAmount(Unit* caster)
                     customAmount = true;
                     break;
                 }
+				case 5782:  // Fear
+				{
+					amount = irand(1, GetBase()->GetUnitOwner()->CountPctFromMaxHealth(10));
+					customAmount = true;
+					break;
+				}
                 case 128405:// Narrow Escape
                 {
                     amount = int32(GetBase()->GetUnitOwner()->CountPctFromMaxHealth(10));

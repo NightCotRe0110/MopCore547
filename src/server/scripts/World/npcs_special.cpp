@@ -3795,90 +3795,88 @@ const int32 purpleAuras[6] = { 113931, 113915, 113916, 113917, 113918, 113919 };
 
 class npc_demonic_gateway_purple : public CreatureScript
 {
-    public:
-        npc_demonic_gateway_purple() : CreatureScript("npc_demonic_gateway_purple") { }
+public:
+	npc_demonic_gateway_purple() : CreatureScript("npc_demonic_gateway_purple") { }
 
-        struct npc_demonic_gateway_purpleAI : public ScriptedAI
-        {
-            npc_demonic_gateway_purpleAI(Creature* creature) : ScriptedAI(creature) { }
+	struct npc_demonic_gateway_purpleAI : public ScriptedAI
+	{
+		npc_demonic_gateway_purpleAI(Creature* creature) : ScriptedAI(creature) { }
 
-            void Reset()
-            {
-                me->CastSpell(me, 113901, true); // Periodic add charge
-                me->CastSpell(me, 113900, true); // Portal Visual
-                me->CastSpell(me, 113931, true); // 0 Purple Charge
-                me->SetFlag(UNIT_FIELD_INTERACT_SPELL_ID, 113902);
-                me->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_SPELLCLICK);
-                me->setFaction(35);
-            }
+		void Reset()
+		{
+			me->CastSpell(me, 113901, true); // Periodic add charge
+			me->CastSpell(me, 113900, true); // Portal Visual
+			me->CastSpell(me, 113931, true); // 0 Purple Charge
+			me->SetFlag(UNIT_FIELD_INTERACT_SPELL_ID, 113902);
+			me->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_SPELLCLICK);
+			me->setFaction(35);
+		}
 
-            void OnSpellClick(Unit* clicker)
-            {
-                if (clicker->GetTypeId() != TYPEID_PLAYER)
-                    return;
+		void OnSpellClick(Unit* clicker)
+		{
+			if (clicker->GetTypeId() != TYPEID_PLAYER)
+				return;
 
-                // Demonic Gateway cooldown marker
-                if (clicker->HasAura(113942))
-                    return;
+			// Demonic Gateway cooldown marker
+			if (clicker->HasAura(113942))
+				return;
 
-                Unit* owner = me->GetOwner();
-                if (!owner || !owner->ToPlayer())
-                    return;
+			// Can't use in stun
+			if (clicker->HasAuraType(SPELL_AURA_MOD_STUN))
+				return;
 
-                if (Group* group = clicker->ToPlayer()->GetGroup())
-                {
-                    if (group != owner->ToPlayer()->GetGroup())
-                        return;
-                }
-                else if (owner != clicker)
-                    return;
+			Unit* owner = me->GetOwner();
+			if (!owner || !owner->ToPlayer())
+				return;
 
-                AuraEffectPtr charges = me->GetAuraEffect(113901, EFFECT_0);
-                if (!charges)
-                    return;
+			if (Group* group = clicker->ToPlayer()->GetGroup())
+			{
+				if (group != owner->ToPlayer()->GetGroup())
+					return;
+			}
+			else if (owner != clicker)
+				return;
 
-                if (charges->GetAmount() == 0)
-                    return;
+			AuraEffectPtr charges = me->GetAuraEffect(113901, EFFECT_0);
+			if (!charges)
+				return;
 
-                std::list<Creature*> greenGates;
-                me->GetCreatureListWithEntryInGrid(greenGates, 59262, 75.0f);
+			if (charges->GetAmount() == 0)
+				return;
 
-                if (greenGates.empty())
-                    return;
+			std::list<Creature*> greenGates;
+			me->GetCreatureListWithEntryInGrid(greenGates, 59262, 75.0f);
 
-                greenGates.sort(MoPCore::DistanceCompareOrderPred(me));
-                for (auto itr : greenGates)
-                {
-                    clicker->CastSpell(clicker, 113942, true);
+			if (greenGates.empty())
+				return;
 
-                    // Init dest coordinates
-                    float x, y, z;
-                    itr->GetPosition(x, y, z);
+			greenGates.sort(MoPCore::DistanceCompareOrderPred(me));
+			for (auto itr : greenGates)
+			{
+				// Skip gates created by other warlocks
+				if (itr->GetOwnerGUID() != me->GetOwnerGUID())
+					continue;
 
-                    float speedXY;
-                    float speedZ = 5;
+				clicker->CastSpell(*itr, 120729, true); ///< Demonic Gateway Purple Transport
 
-                    speedXY = clicker->GetExactDist2d(x, y) * 10.0f / speedZ;
-                    clicker->GetMotionMaster()->MoveJump(x, y, z, speedXY, speedZ);
-                    break;
-                }
+				charges->SetAmount(charges->GetAmount() - 1);
 
-                charges->SetAmount(charges->GetAmount() - 1);
+				for (int i = 0; i < 6; ++i)
+				{
+					if (i <= charges->GetAmount())
+						me->CastSpell(me, purpleAuras[i], true);
+					else
+						me->RemoveAura(purpleAuras[i]);
+				}
+				break;
+			}
+		}
+	};
 
-                for (int i = 0; i < 6; ++i)
-                {
-                    if (i <= charges->GetAmount())
-                        me->CastSpell(me, purpleAuras[i], true);
-                    else
-                        me->RemoveAura(purpleAuras[i]);
-                }
-            }
-        };
-
-        CreatureAI* GetAI(Creature* creature) const
-        {
-            return new npc_demonic_gateway_purpleAI(creature);
-        }
+	CreatureAI* GetAI(Creature* creature) const
+	{
+		return new npc_demonic_gateway_purpleAI(creature);
+	}
 };
 
 /*######
@@ -3887,89 +3885,87 @@ class npc_demonic_gateway_purple : public CreatureScript
 
 class npc_demonic_gateway_green : public CreatureScript
 {
-    public:
-        npc_demonic_gateway_green() : CreatureScript("npc_demonic_gateway_green") { }
+public:
+	npc_demonic_gateway_green() : CreatureScript("npc_demonic_gateway_green") { }
 
-        struct npc_demonic_gateway_greenAI : public ScriptedAI
-        {
-            npc_demonic_gateway_greenAI(Creature* creature) : ScriptedAI(creature) { }
+	struct npc_demonic_gateway_greenAI : public ScriptedAI
+	{
+		npc_demonic_gateway_greenAI(Creature* creature) : ScriptedAI(creature) { }
 
-            void Reset()
-            {
-                me->CastSpell(me, 113901, true); // Periodic add charges
-                me->CastSpell(me, 113900, true); // Portal Visual
-                me->SetFlag(UNIT_FIELD_INTERACT_SPELL_ID, 113902);
-                me->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_SPELLCLICK);
-                me->setFaction(35);
-            }
+		void Reset()
+		{
+			me->CastSpell(me, 113901, true); // Periodic add charges
+			me->CastSpell(me, 113900, true); // Portal Visual
+			me->SetFlag(UNIT_FIELD_INTERACT_SPELL_ID, 113902);
+			me->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_SPELLCLICK);
+			me->setFaction(35);
+		}
 
-            void OnSpellClick(Unit* clicker)
-            {
-                if (clicker->GetTypeId() != TYPEID_PLAYER)
-                    return;
+		void OnSpellClick(Unit* clicker)
+		{
+			if (clicker->GetTypeId() != TYPEID_PLAYER)
+				return;
 
-                // Demonic Gateway cooldown marker
-                if (clicker->HasAura(113942))
-                    return;
+			// Demonic Gateway cooldown marker
+			if (clicker->HasAura(113942))
+				return;
 
-                Unit* owner = me->GetOwner();
-                if (!owner || !owner->ToPlayer())
-                    return;
+			// Can't use in stun
+			if (clicker->HasAuraType(SPELL_AURA_MOD_STUN))
+				return;
 
-                if (Group* group = clicker->ToPlayer()->GetGroup())
-                {
-                    if (group != owner->ToPlayer()->GetGroup())
-                        return;
-                }
-                else if (owner != clicker)
-                    return;
+			Unit* owner = me->GetOwner();
+			if (!owner || !owner->ToPlayer())
+				return;
 
-                AuraEffectPtr charges = me->GetAuraEffect(113901, EFFECT_0);
-                if (!charges)
-                    return;
+			if (Group* group = clicker->ToPlayer()->GetGroup())
+			{
+				if (group != owner->ToPlayer()->GetGroup())
+					return;
+			}
+			else if (owner != clicker)
+				return;
 
-                if (charges->GetAmount() == 0)
-                    return;
+			AuraEffectPtr charges = me->GetAuraEffect(113901, EFFECT_0);
+			if (!charges)
+				return;
 
-                std::list<Creature*> purpleGates;
-                me->GetCreatureListWithEntryInGrid(purpleGates, 59271, 75.0f);
+			if (charges->GetAmount() == 0)
+				return;
 
-                if (purpleGates.empty())
-                    return;
+			std::list<Creature*> purpleGates;
+			me->GetCreatureListWithEntryInGrid(purpleGates, 59271, 75.0f);
 
-                purpleGates.sort(MoPCore::DistanceCompareOrderPred(me));
-                for (auto itr : purpleGates)
-                {
-                    clicker->CastSpell(clicker, 113942, true);
+			if (purpleGates.empty())
+				return;
 
-                    // Init dest coordinates
-                    float x, y, z;
-                    itr->GetPosition(x, y, z);
+			purpleGates.sort(MoPCore::DistanceCompareOrderPred(me));
+			for (auto itr : purpleGates)
+			{
+				// Skip gates created by other warlocks
+				if (itr->GetOwnerGUID() != me->GetOwnerGUID())
+					continue;
 
-                    float speedXY;
-                    float speedZ = 5;
+				clicker->CastSpell(*itr, 113896, true); ///< Demonic Gateway Green Transport
 
-                    speedXY = clicker->GetExactDist2d(x, y) * 10.0f / speedZ;
-                    clicker->GetMotionMaster()->MoveJump(x, y, z, speedXY, speedZ);
-                    break;
-                }
+				charges->SetAmount(charges->GetAmount() - 1);
 
-                charges->SetAmount(charges->GetAmount() - 1);
+				for (int i = 0; i < 6; ++i)
+				{
+					if (i <= charges->GetAmount())
+						me->CastSpell(me, greenAuras[i], true);
+					else
+						me->RemoveAura(greenAuras[i]);
+				}
+				break;
+			}
+		}
+	};
 
-                for (int i = 0; i < 6; ++i)
-                {
-                    if (i <= charges->GetAmount())
-                        me->CastSpell(me, greenAuras[i], true);
-                    else
-                        me->RemoveAura(greenAuras[i]);
-                }
-            }
-        };
-
-        CreatureAI* GetAI(Creature* creature) const
-        {
-            return new npc_demonic_gateway_greenAI(creature);
-        }
+	CreatureAI* GetAI(Creature* creature) const
+	{
+		return new npc_demonic_gateway_greenAI(creature);
+	}
 };
 
 /*######
