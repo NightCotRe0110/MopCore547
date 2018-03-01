@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (C) 2008-2012 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
  *
@@ -590,30 +590,42 @@ void WorldSession::HandleNpcTextQueryOpcode(WorldPacket& recvData)
 
 #define DEFAULT_GREETINGS_GOSSIP      68
 
-void WorldSession::SendBroadcastTextDb2Reply(uint32 entry)
+void WorldSession::SendBroadcastTextDb2Reply(uint32 Text_ID)
 {
     ByteBuffer buff;
     WorldPacket data(SMSG_DB_REPLY);
 
-    GossipText const* pGossip = sObjectMgr->GetGossipText(entry);
+	std::string text_0 = "Greetings, $N";
+	std::string text_1 = "Greetings, $N";
 
-    if (!pGossip)
-        pGossip = sObjectMgr->GetGossipText(DEFAULT_GREETINGS_GOSSIP);
+	GossipText const* pGossip = sObjectMgr->GetGossipText(Text_ID);
+	if (pGossip) {
+		text_0 = pGossip->Options[0].Text_0;
+		text_1 = pGossip->Options[0].Text_1;
+	}
 
-    std::string text = "Greetings, $N";
+	int loc_idx = GetSessionDbLocaleIndex();
+	if (loc_idx > 0) {
+		if (NpcTextLocale const* nl = sObjectMgr->GetNpcTextLocale(Text_ID)) {
+			ObjectMgr::GetLocaleString(nl->Text_0[0], loc_idx, text_0);
+			ObjectMgr::GetLocaleString(nl->Text_1[0], loc_idx, text_1);
+		} else if (NpcTextLocale const* nl = sObjectMgr->GetNpcTextLocale(DEFAULT_GREETINGS_GOSSIP)) {
+			ObjectMgr::GetLocaleString(nl->Text_0[0], loc_idx, text_0);
+			ObjectMgr::GetLocaleString(nl->Text_1[0], loc_idx, text_1);
+		}
+	}
 
-    uint16 size1 = pGossip ? pGossip->Options[0].Text_0.length() : text.length();
-    uint16 size2 = pGossip ? pGossip->Options[0].Text_1.length() : text.length();
+	uint16 size1 = text_0.length();
+	uint16 size2 = text_0.length();
 
-    buff << uint32(entry);
+    buff << uint32(Text_ID);
     buff << uint32(0); // unk
     buff << uint16(size1);
     if (size1)
-        buff << std::string( pGossip ? pGossip->Options[0].Text_0 : text);
+        buff << std::string(text_0);
     buff << uint16(size2);
     if (size2)
-        buff << std::string(pGossip ? pGossip->Options[0].Text_1 : text);
-
+        buff << std::string(text_1);
     buff << uint32(0);
     buff << uint32(0);
     buff << uint32(0);
@@ -625,9 +637,9 @@ void WorldSession::SendBroadcastTextDb2Reply(uint32 entry)
     buff << uint32(pGossip ? pGossip->Options[0].Emotes[0]._Delay : 0); // Delay
     buff << uint32(pGossip ? pGossip->Options[0].Emotes[0]._Emote : 0); // Emote
 
-    data << uint32(entry);
+    data << uint32(Text_ID);
     data << uint32(DB2_REPLY_BROADCAST_TEXT);
-    data << uint32(sObjectMgr->GetHotfixDate(entry, DB2_REPLY_BROADCAST_TEXT));
+    data << uint32(sObjectMgr->GetHotfixDate(Text_ID, DB2_REPLY_BROADCAST_TEXT));
     data << uint32(buff.size());
     data.append(buff);
 

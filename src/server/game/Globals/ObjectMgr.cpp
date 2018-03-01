@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (C) 2008-2012 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
  *
@@ -5367,8 +5367,8 @@ void ObjectMgr::LoadNpcTextLocales()
             LocaleConstant locale = (LocaleConstant) i;
             for (uint8 j = 0; j < MAX_LOCALES; ++j)
             {
-                AddLocaleString(fields[1 + 8 * 2 * (i - 1) + 2 * j].GetString(), locale, data.Text_0[j]);
-                AddLocaleString(fields[1 + 8 * 2 * (i - 1) + 2 * j + 1].GetString(), locale, data.Text_1[j]);
+                AddLocaleString(fields[1 + 20 * (i - 1) + 2 * j].GetString(), locale, data.Text_0[j]);
+                AddLocaleString(fields[1 + 20 * (i - 1) + 2 * j + 1].GetString(), locale, data.Text_1[j]);
             }
         }
     }

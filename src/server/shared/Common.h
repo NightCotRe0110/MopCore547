@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (C) 2008-2012 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
  *
@@ -168,7 +168,7 @@ enum LocaleConstant
 const uint8 TOTAL_LOCALES = 11;
 const LocaleConstant DEFAULT_LOCALE = LOCALE_enUS;
 
-#define MAX_LOCALES 11
+#define MAX_LOCALES 10
 #define MAX_ACCOUNT_TUTORIAL_VALUES 8
 
 extern char const* localeNames[TOTAL_LOCALES];
