@@ -1,5 +1,5 @@
 ###############################################
-# MopCore Auth Server configuration file #
+# MopCore Auth Server configuration file      #
 ###############################################
 [authserver]
 
@@ -9,6 +9,7 @@
 #    EXAMPLE CONFIG
 #    AUTH SERVER SETTINGS
 #    MYSQL SETTINGS
+#    LOGGING SYSTEM SETTINGS
 #
 ###################################################################################################
 
@@ -133,7 +134,7 @@ WrongPass.BanType = 0
 #                                                                           Unix/Linux)
 #        Default:     "127.0.0.1;3306;mopcore;mopcore;auth"
 
-LoginDatabaseInfo = "127.0.0.1;3306;mopcore;mopcore;auth"
+LoginDatabaseInfo = "127.0.0.1;3307;root;ascent;auth"
 
 #
 #    LoginDatabase.WorkerThreads
@@ -147,8 +148,7 @@ LoginDatabase.WorkerThreads = 1
 ###################################################################################################
 
 ###################################################################################################
-#
-#  Logging system options.
+#  LOGGING SYSTEM SETTINGS
 #
 #  Appender config values: Given a appender "name"
 #    Appender.name
@@ -205,8 +205,8 @@ LoginDatabase.WorkerThreads = 1
 #                          w - (Overwrite)
 #
 
-Appender.Console=1,2,0
-Appender.Auth=2,2,0,Auth.log,w
+Appender.Console=1,2,0,9 9 9 13 9 9
+Appender.Auth=2,2,3,Auth.log,w
 
 #                     LogLevel
 #                         0 - (Disabled)
