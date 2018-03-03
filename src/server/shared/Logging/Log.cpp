@@ -34,6 +34,7 @@ Log::Log() : worker(NULL)
 	SetRealmID(0);
 	m_logsTimestamp = "_" + GetTimestampStr();
 	LoadFromConfig();
+	specialLog = fopen("mopcore.log", "a");
 }
 
 Log::~Log()
@@ -41,7 +42,7 @@ Log::~Log()
 	Close();
 
 	fclose(specialLog);
-	delete specialLog;
+	//delete specialLog;
 	specialLog = NULL;
 }
 
