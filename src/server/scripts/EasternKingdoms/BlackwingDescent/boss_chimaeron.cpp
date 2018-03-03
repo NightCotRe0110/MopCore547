@@ -1,8 +1,8 @@
-#include"ScriptPCH.h"
+п»ї#include"ScriptPCH.h"
 #include"Spell.h"
 #include"blackwing_descent.h"
 
-//todo: реализовать reroure power, low health, корректный double attack
+//todo: й‡ЈиґЌп¦єиЌ»еџЋ?reroure power, low health, жѓџж‹™з„‰её™жёѕ double attack
 enum ScriptTexts
 {
     SAY_AGGRO       = 0,
@@ -513,9 +513,10 @@ class spell_chimaeron_finkles_mixture : public SpellScriptLoader
         {
             PrepareAuraScript(spell_chimaeron_finkles_mixture_AuraScript);
 
-            void CalculateAmount(constAuraEffectPtr /*aurEff*/, int32 & amount, bool& /*canBeRecalculated*/)
+            bool CalculateAmount(constAuraEffectPtr /*aurEff*/, int32 & amount, bool& /*canBeRecalculated*/)
             {
                 amount = -1;
+				return true;
             }
 
             void Absorb(AuraEffectPtr aurEff, DamageInfo & dmgInfo, uint32 & absorbAmount)
@@ -548,7 +549,7 @@ class spell_chimaeron_finkles_mixture : public SpellScriptLoader
             void Register()
             {
                 DoEffectCalcAmount += AuraEffectCalcAmountFn(spell_chimaeron_finkles_mixture_AuraScript::CalculateAmount, EFFECT_1, SPELL_AURA_SCHOOL_ABSORB);
-                OnEffectAbsorb += AuraEffectAbsorbFn(spell_chimaeron_finkles_mixture_AuraScript::Absorb, EFFECT_1);
+                OnEffectAbsorb += AuraEffectAbsorbFn(spell_chimaeron_finkles_mixture_AuraScript::Absorb, EFFECT_1, SPELL_AURA_SCHOOL_ABSORB);
                 OnEffectPeriodic += AuraEffectPeriodicFn(spell_chimaeron_finkles_mixture_AuraScript::PeriodicTick, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
             }
         };

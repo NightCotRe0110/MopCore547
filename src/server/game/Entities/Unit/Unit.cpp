@@ -1155,6 +1155,11 @@ void Unit::CastCustomSpell(uint32 spellId, CustomSpellValues const& value, Unit*
     CastSpell(targets, spellInfo, &value, triggered ? TRIGGERED_FULL_MASK : TRIGGERED_NONE, castItem, triggeredByAura, originalCaster);
 }
 
+void Unit::CastSpell(Position const& p_Pos, uint32 p_SpellId, bool p_Triggered, Item* p_CastItem /*= nullptr*/, constAuraEffectPtr p_TriggeredByAura /*= nullptr*/, uint64 p_OriginalCasterGUID /*= 0*/)
+{
+	CastSpell(p_Pos.m_positionX, p_Pos.m_positionY, p_Pos.m_positionZ, p_SpellId, p_Triggered, p_CastItem, p_TriggeredByAura, p_OriginalCasterGUID);
+}
+
 void Unit::CastSpell(float x, float y, float z, uint32 spellId, bool triggered, Item* castItem, constAuraEffectPtr triggeredByAura, uint64 originalCaster)
 {
     SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spellId);
@@ -5473,6 +5478,17 @@ GameObject* Unit::GetGameObject(uint32 spellId) const
             return *i;
 
     return NULL;
+}
+
+GameObject* Unit::GetGameObjectBySlot(uint8 slot) const
+{
+	assert(slot < 4);
+
+	uint64 l_GameObjectGUID = m_ObjectSlot[slot];
+	if (l_GameObjectGUID)
+		return GetMap()->GetGameObject(l_GameObjectGUID);
+
+	return nullptr;
 }
 
 void Unit::AddGameObject(GameObject* gameObj)
@@ -22125,38 +22141,81 @@ uint32 Unit::GetDamageTakenInPastSecs(uint32 secs)
     return damage;
 }
 
-void Unit::RemoveSoulSwapDOT(Unit* target)
+void Unit::RemoveSoulSwapDOT(Unit* p_Target)
 {
+	m_SoulSwapDOTList.clear();
+	m_SoulSwapTarget = p_Target->GetGUID();
 
-    _SoulSwapDOTList.clear();
+	AuraEffectList const& mPeriodic = p_Target->GetAuraEffectsByType(SPELL_AURA_PERIODIC_DAMAGE);
+	for (AuraEffectList::const_iterator iter = mPeriodic.begin(); iter != mPeriodic.end(); ++iter)
+	{
+		if (!(*iter)) // prevent crash
+			continue;
 
-    AuraEffectList const mPeriodic = target->GetAuraEffectsByType(SPELL_AURA_PERIODIC_DAMAGE);
-    for (AuraEffectList::const_iterator iter = mPeriodic.begin(); iter != mPeriodic.end(); ++iter)
-    {
-        if (!(*iter)) // prevent crash
-            continue;
+		if ((*iter)->GetSpellInfo()->SpellFamilyName != SPELLFAMILY_WARLOCK ||
+			(*iter)->GetCasterGUID() != GetGUID()) // only warlock spells
+			continue;
 
-        if ((*iter)->GetSpellInfo()->SpellFamilyName != SPELLFAMILY_WARLOCK ||
-            (*iter)->GetCasterGUID() != GetGUID()) // only warlock spells
-            continue;
+		AuraPtr l_Aura = (*iter)->GetBase();
+		SoulSwapAuraInfo l_AuraInfo = SoulSwapAuraInfo(l_Aura->GetId(), l_Aura->GetDuration(), l_Aura->GetMaxDuration(), l_Aura->GetCharges(), l_Aura->GetStackAmount());
 
-        if (target->GetAura((*iter)->GetId()))
-            _SoulSwapDOTList.push_back(target->GetAura((*iter)->GetId()));
-    }
+		for (uint8 l_Index = 0; l_Index < MAX_EFFECTS; ++l_Index)
+		{
+			if (AuraEffectPtr l_AuraEffect = l_Aura->GetEffect(l_Index))
+			{
+				l_AuraInfo.m_FixedAmplitude[l_Index] = l_AuraEffect->GetAmplitude();
+				l_AuraInfo.m_FixedCritical[l_Index] = l_AuraEffect->m_fixed_periodic.GetCriticalChance();
+				l_AuraInfo.m_FixedDamages[l_Index] = l_AuraEffect->m_fixed_periodic.GetFixedDamage();
+				l_AuraInfo.m_FixedTotalDamages[l_Index] = l_AuraEffect->m_fixed_periodic.GetFixedTotalDamage();
+			}
+		}
+
+		m_SoulSwapDOTList.push_back(l_AuraInfo);
+	}
 }
 
-void Unit::ApplySoulSwapDOT(Unit* caster, Unit* target)
+void Unit::ApplySoulSwapDOT(Unit* p_Target)
 {
-    if (!_SoulSwapDOTList.empty())
-    {
-        for (AuraList::const_iterator iter = _SoulSwapDOTList.begin(); iter != _SoulSwapDOTList.end(); ++iter)
-        {
-            if (!target->HasAura((*iter)->GetId()))
-                AddAura((*iter)->GetId(), target);
+	for (SoulSwapAuraInfo const& l_Aura : m_SoulSwapDOTList)
+	{
+		bool alreadyExist = p_Target->HasAura(l_Aura.m_ID);
+		if (AuraPtr l_NewAura = AddAura(l_Aura.m_ID, p_Target))
+		{
+			int32 l_Duration = l_Aura.m_Duration;
+			int32 l_MaxDuration = l_Aura.m_MaxDuration;
 
-            target->GetAura((*iter)->GetId())->SetDuration((*iter)->GetDuration());
-        }
-    }
+			/// Pandemic should works too on Soul Swap
+			if (AuraPtr l_OldAura = p_Target->GetAura(l_Aura.m_ID, GetGUID()))
+			{
+				if (alreadyExist && HasAura(131973) && HasAura(74434))
+				{
+					int32 l_DurationMax = int32(sSpellMgr->GetSpellInfo(l_Aura.m_ID)->GetDuration() * 1.5f);
+					int32 l_MaxDurationMax = int32(sSpellMgr->GetSpellInfo(l_Aura.m_ID)->GetMaxDuration() * 1.5f);
+
+					l_Duration = std::min(l_DurationMax, l_OldAura->GetDuration() + l_Duration);
+					l_MaxDuration = std::min(l_MaxDurationMax, l_OldAura->GetDuration() + l_MaxDuration);
+				}
+			}
+
+			l_NewAura->SetDuration(l_Duration);
+			l_NewAura->SetMaxDuration(l_MaxDuration);
+			l_NewAura->SetCharges(l_Aura.m_Charges);
+			l_NewAura->SetStackAmount(l_Aura.m_Stacks);
+
+			for (uint8 l_Index = 0; l_Index < MAX_EFFECTS; ++l_Index)
+			{
+				if (AuraEffectPtr l_AuraEffect = l_NewAura->GetEffect(l_Index))
+				{
+					l_AuraEffect->m_fixed_periodic.SetCriticalChance(l_Aura.m_FixedCritical[l_Index]);
+					l_AuraEffect->m_fixed_periodic.SetFixedDamage(l_Aura.m_FixedDamages[l_Index]);
+					l_AuraEffect->m_fixed_periodic.SetFixedTotalDamage(l_Aura.m_FixedTotalDamages[l_Index]);
+					l_AuraEffect->SetAmplitude(l_Aura.m_FixedAmplitude[l_Index]);
+				}
+			}
+		}
+	}
+
+	m_SoulSwapDOTList.clear();
 }
 
 Unit* Unit::GetSimulacrumTarget()

@@ -2336,7 +2336,7 @@ class spell_item_stay_of_execution : public SpellScriptLoader
 
             void Register()
             {
-                 OnEffectAbsorb += AuraEffectAbsorbFn(spell_item_stay_of_execution_AuraScript::Absorb, EFFECT_0);
+                 OnEffectAbsorb += AuraEffectAbsorbFn(spell_item_stay_of_execution_AuraScript::Absorb, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB);
                  OnEffectRemove += AuraEffectRemoveFn(spell_item_stay_of_execution_AuraScript::OnRemove, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB, AURA_EFFECT_HANDLE_REAL);
             }
 
@@ -2393,9 +2393,10 @@ class spell_item_endurance_of_niuzao : public SpellScriptLoader
 		{
 			PrepareAuraScript(spell_endurance_of_niuzao_AuraScript);
 
-			void CalculateAmount(constAuraEffectPtr aurEff, int32 & amount, bool & canBeRecalculated)
+			bool CalculateAmount(constAuraEffectPtr aurEff, int32 & amount, bool & canBeRecalculated)
 			{
 				amount = -1;
+				return true;
 			}
 
 			void Absorb(AuraEffectPtr /*aurEff*/, DamageInfo & dmgInfo, uint32 & absorbAmount)
@@ -2413,7 +2414,7 @@ class spell_item_endurance_of_niuzao : public SpellScriptLoader
 			void Register()
 			{
 				DoEffectCalcAmount += AuraEffectCalcAmountFn(spell_endurance_of_niuzao_AuraScript::CalculateAmount, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB);
-				OnEffectAbsorb += AuraEffectAbsorbFn(spell_endurance_of_niuzao_AuraScript::Absorb, EFFECT_0);
+				OnEffectAbsorb += AuraEffectAbsorbFn(spell_endurance_of_niuzao_AuraScript::Absorb, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB);
 			}
 		};
 

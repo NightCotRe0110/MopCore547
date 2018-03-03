@@ -2309,6 +2309,8 @@ class Player : public Unit, public GridObject<Player>
         void UpdateMasteryPercentage();
         void UpdatePvPPowerPercentage();
 
+		float GetPvpHealingBonus() const;
+
         void UpdateAllSpellCritChances();
         void UpdateSpellCritChance(uint32 school);
         void UpdateArmorPenetration(int32 amount);

@@ -157,9 +157,10 @@ class spell_asira_dawnslayer_blade_barrier : public SpellScriptLoader
         {
             PrepareAuraScript(spell_asira_dawnslayer_blade_barrier_AuraScript);
 
-            void CalculateAmount(constAuraEffectPtr /*aurEff*/, int32 & amount, bool& /*canBeRecalculated*/)
+            bool CalculateAmount(constAuraEffectPtr /*aurEff*/, int32 & amount, bool& /*canBeRecalculated*/)
             {
                 amount = -1;
+				return true;
             }
 
             void Absorb(AuraEffectPtr aurEff, DamageInfo & dmgInfo, uint32 & absorbAmount)
@@ -179,7 +180,7 @@ class spell_asira_dawnslayer_blade_barrier : public SpellScriptLoader
             void Register()
             {
                  DoEffectCalcAmount += AuraEffectCalcAmountFn(spell_asira_dawnslayer_blade_barrier_AuraScript::CalculateAmount, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB);
-                 OnEffectAbsorb += AuraEffectAbsorbFn(spell_asira_dawnslayer_blade_barrier_AuraScript::Absorb, EFFECT_0);
+                 OnEffectAbsorb += AuraEffectAbsorbFn(spell_asira_dawnslayer_blade_barrier_AuraScript::Absorb, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB);
                  if (m_scriptSpellId == SPELL_BLADE_BARRIER)
                      AfterEffectRemove += AuraEffectRemoveFn(spell_asira_dawnslayer_blade_barrier_AuraScript::HandleAfterRemove, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB, AURA_EFFECT_HANDLE_REAL);
             }

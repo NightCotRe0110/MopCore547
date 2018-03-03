@@ -468,12 +468,13 @@ class spell_mage_incanters_ward : public SpellScriptLoader
                 return true;
             }
 
-            void CalculateAmount(constAuraEffectPtr , int32 & amount, bool & )
+            bool CalculateAmount(constAuraEffectPtr , int32 & amount, bool & )
             {
                 if (Unit* caster = GetCaster())
                     amount += caster->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_ARCANE);
 
                 absorbtionAmount = float(amount);
+				return true;
             }
 
             void OnAbsorb(AuraEffectPtr aurEff, DamageInfo& dmgInfo, uint32& absorbAmount)
@@ -513,7 +514,7 @@ class spell_mage_incanters_ward : public SpellScriptLoader
             void Register()
             {
                 DoEffectCalcAmount += AuraEffectCalcAmountFn(spell_mage_incanters_ward_AuraScript::CalculateAmount, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB);
-                OnEffectAbsorb += AuraEffectAbsorbFn(spell_mage_incanters_ward_AuraScript::OnAbsorb, EFFECT_0);
+                OnEffectAbsorb += AuraEffectAbsorbFn(spell_mage_incanters_ward_AuraScript::OnAbsorb, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB);
                 OnEffectRemove += AuraEffectRemoveFn(spell_mage_incanters_ward_AuraScript::OnRemove, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB, AURA_EFFECT_HANDLE_REAL);
             }
         };
@@ -585,9 +586,10 @@ class spell_mage_cauterize : public SpellScriptLoader
                 return GetUnitOwner()->ToPlayer();
             }
 
-            void CalculateAmount(constAuraEffectPtr /*auraEffect*/, int32& amount, bool& /*canBeRecalculated*/)
+            bool CalculateAmount(constAuraEffectPtr /*auraEffect*/, int32& amount, bool& /*canBeRecalculated*/)
             {
                 amount = -1;
+				return true;
             }
 
             void Absorb(AuraEffectPtr /*auraEffect*/, DamageInfo& dmgInfo, uint32& absorbAmount)
@@ -613,7 +615,7 @@ class spell_mage_cauterize : public SpellScriptLoader
             void Register()
             {
                 DoEffectCalcAmount += AuraEffectCalcAmountFn(spell_mage_cauterize_AuraScript::CalculateAmount, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB);
-                OnEffectAbsorb += AuraEffectAbsorbFn(spell_mage_cauterize_AuraScript::Absorb, EFFECT_0);
+                OnEffectAbsorb += AuraEffectAbsorbFn(spell_mage_cauterize_AuraScript::Absorb, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB);
             }
         };
 
@@ -1590,7 +1592,7 @@ class spell_mage_incanters_absorbtion_absorb : public SpellScriptLoader
 
             void Register()
             {
-                 AfterEffectAbsorb += AuraEffectAbsorbFn(spell_mage_incanters_absorbtion_absorb_AuraScript::Trigger, EFFECT_0);
+                 AfterEffectAbsorb += AuraEffectAbsorbFn(spell_mage_incanters_absorbtion_absorb_AuraScript::Trigger, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB);
             }
         };
 

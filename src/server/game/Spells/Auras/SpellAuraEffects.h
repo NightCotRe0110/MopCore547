@@ -51,6 +51,7 @@ class AuraEffect : public std::enable_shared_from_this<AuraEffect>
         SpellModifier* GetSpellModifier() const { return m_spellmod; }
 
         SpellInfo const* GetSpellInfo() const { return m_spellInfo; }
+		SpellEffectInfo const& GetSpellEffectInfo() const { return m_spellInfo->Effects[m_effIndex]; }
         uint32 GetId() const { return m_spellInfo->Id; }
         uint32 GetEffIndex() const { return m_effIndex; }
         int32 GetBaseAmount() const { return m_baseAmount; }

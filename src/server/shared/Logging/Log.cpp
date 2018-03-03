@@ -573,3 +573,20 @@ void Log::OutSpecialLog(const char* str, ...)
 	outInfo(LOG_FILTER_GENERAL, result);
 
 }
+
+void Log::OutTrinity(const char* str, ...)
+{
+	if (!str)
+		return;
+
+	char result[MAX_QUERY_LEN];
+	va_list ap;
+
+	va_start(ap, str);
+	vsnprintf(result, MAX_QUERY_LEN, str, ap);
+	va_end(ap);
+
+	std::string date = GetTimestampStr();
+	fprintf(specialLog, "[%s] MopCore LOG : %s\n", date.c_str(), result);
+	fflush(specialLog);
+}

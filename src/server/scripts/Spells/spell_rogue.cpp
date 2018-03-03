@@ -192,9 +192,10 @@ class spell_rog_cheat_death : public SpellScriptLoader
         {
             PrepareAuraScript(spell_rog_cheat_death_AuraScript);
 
-            void CalculateAmount(constAuraEffectPtr /*auraEffect*/, int32& amount, bool& /*canBeRecalculated*/)
+            bool CalculateAmount(constAuraEffectPtr /*auraEffect*/, int32& amount, bool& /*canBeRecalculated*/)
             {
                 amount = -1;
+				return true;
             }
 
             void Absorb(AuraEffectPtr /*auraEffect*/, DamageInfo& dmgInfo, uint32& absorbAmount)
@@ -225,7 +226,7 @@ class spell_rog_cheat_death : public SpellScriptLoader
             void Register()
             {
                 DoEffectCalcAmount += AuraEffectCalcAmountFn(spell_rog_cheat_death_AuraScript::CalculateAmount, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB);
-                OnEffectAbsorb += AuraEffectAbsorbFn(spell_rog_cheat_death_AuraScript::Absorb, EFFECT_0);
+                OnEffectAbsorb += AuraEffectAbsorbFn(spell_rog_cheat_death_AuraScript::Absorb, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB);
             }
         };
 
@@ -1361,10 +1362,10 @@ class spell_rog_recuperate : public SpellScriptLoader
         {
             PrepareAuraScript(spell_rog_recuperate_AuraScript);
 
-            void CalculateAmount(constAuraEffectPtr /*auraEffect*/, int32& amount, bool& /*canBeRecalculated*/)
+            bool CalculateAmount(constAuraEffectPtr /*auraEffect*/, int32& amount, bool& /*canBeRecalculated*/)
             {
                 if (!GetTarget())
-                    return;
+                    return false;
 
                 if (Player* roguePlayer = GetTarget()->ToPlayer())
                 {
@@ -1378,6 +1379,7 @@ class spell_rog_recuperate : public SpellScriptLoader
 
                     amount = bp;
                 }
+				return true;
             }
 
             void Register()

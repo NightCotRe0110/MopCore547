@@ -712,7 +712,7 @@ class spell_sha_stone_bulwark : public SpellScriptLoader
         {
             PrepareAuraScript(spell_sha_stone_bulwark_AuraScript);
 
-            void CalculateAmount(constAuraEffectPtr , int32 & amount, bool & )
+            bool CalculateAmount(constAuraEffectPtr , int32 & amount, bool & )
             {
                 if (Unit* caster = GetCaster())
                 {
@@ -733,6 +733,7 @@ class spell_sha_stone_bulwark : public SpellScriptLoader
                         }
                     }
                 }
+				return true;
             }
 
             void Register()

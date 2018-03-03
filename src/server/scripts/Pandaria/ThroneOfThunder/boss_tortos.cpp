@@ -727,7 +727,7 @@ class spell_crystal_shell_aura : public SpellScriptLoader
 
             void Register()
             {
-                OnEffectAbsorb += AuraEffectAbsorbFn(spell_crystal_shell_aura_AuraScript::OnAbsorb, EFFECT_0);
+                OnEffectAbsorb += AuraEffectAbsorbFn(spell_crystal_shell_aura_AuraScript::OnAbsorb, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB);
                 OnEffectApply += AuraEffectApplyFn(spell_crystal_shell_aura_AuraScript::OnApply, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB, AURA_EFFECT_HANDLE_REAL);
                 OnEffectRemove += AuraEffectRemoveFn(spell_crystal_shell_aura_AuraScript::OnRemove, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB, AURA_EFFECT_HANDLE_REAL);
             }

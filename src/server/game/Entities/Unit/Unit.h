@@ -1607,11 +1607,12 @@ class Unit : public WorldObject
         void CastSpell(Unit* victim, uint32 spellId, TriggerCastFlags triggerFlags = TRIGGERED_NONE, Item* castItem = NULL, constAuraEffectPtr triggeredByAura = NULLAURA_EFFECT, uint64 originalCaster = 0, float periodicDamageModifier = 0.0f);
         void CastSpell(Unit* victim, SpellInfo const* spellInfo, bool triggered, Item* castItem= NULL, constAuraEffectPtr triggeredByAura = NULLAURA_EFFECT, uint64 originalCaster = 0);
         void CastSpell(Unit* victim, SpellInfo const* spellInfo, TriggerCastFlags triggerFlags = TRIGGERED_NONE, Item* castItem= NULL, constAuraEffectPtr triggeredByAura = NULLAURA_EFFECT, uint64 originalCaster = 0, float periodicDamageModifier = 0.0f);
-        void CastSpell(float x, float y, float z, uint32 spellId, bool triggered, Item* castItem = NULL, constAuraEffectPtr triggeredByAura = NULLAURA_EFFECT, uint64 originalCaster = 0);
         void CastCustomSpell(Unit* Victim, uint32 spellId, int32 const* bp0, int32 const* bp1, int32 const* bp2, bool triggered, Item* castItem= NULL, constAuraEffectPtr triggeredByAura = NULLAURA_EFFECT, uint64 originalCaster = 0);
         void CastCustomSpell(Unit* Victim, uint32 spellId, int32 const* bp0, int32 const* bp1, int32 const* bp2, int32 const* bp3, int32 const* bp4, int32 const* bp5, bool triggered, Item* castItem= NULL, constAuraEffectPtr triggeredByAura = NULLAURA_EFFECT, uint64 originalCaster = 0);
         void CastCustomSpell(uint32 spellId, SpellValueMod mod, int32 value, Unit* Victim = NULL, bool triggered = true, Item* castItem = NULL, constAuraEffectPtr triggeredByAura = NULLAURA_EFFECT, uint64 originalCaster = 0);
         void CastCustomSpell(uint32 spellId, CustomSpellValues const &value, Unit* Victim = NULL, bool triggered = true, Item* castItem = NULL, constAuraEffectPtr triggeredByAura = NULLAURA_EFFECT, uint64 originalCaster = 0);
+		void CastSpell(Position const& p_Pos, uint32 p_SpellId, bool p_Triggered, Item* p_CastItem = nullptr, constAuraEffectPtr p_TriggeredByAura = nullptr, uint64 p_OriginalCasterGUID = 0);
+		void CastSpell(float x, float y, float z, uint32 spellId, bool triggered, Item* castItem = NULL, constAuraEffectPtr triggeredByAura = NULLAURA_EFFECT, uint64 originalCaster = 0);
         void CastSpell(GameObject* go, uint32 spellId, bool triggered, Item* castItem = NULL, AuraEffectPtr triggeredByAura = NULLAURA_EFFECT, uint64 originalCaster = 0);
         AuraPtr ToggleAura(uint32 spellId, Unit* target);
         AuraPtr AddAura(uint32 spellId, Unit* target);
@@ -1881,7 +1882,9 @@ class Unit : public WorldObject
         bool HasAuraWithNegativeCaster(uint32 spellid);
 
         void RemoveSoulSwapDOT(Unit* target);
-        void ApplySoulSwapDOT(Unit* caster, Unit* target);
+        void ApplySoulSwapDOT(Unit* target);
+		bool CanExhaleTarget(Unit* p_Target) const { return p_Target->GetGUID() != m_SoulSwapTarget; }
+		void ResetExhaleTarget() { m_SoulSwapTarget = 0; m_SoulSwapDOTList.clear(); }
 
         AuraEffectPtr IsScriptOverriden(SpellInfo const* spell, int32 script) const;
         uint32 GetDiseasesByCaster(uint64 casterGUID, bool remove = false);
@@ -2078,6 +2081,7 @@ class Unit : public WorldObject
         void RemoveAllAreaTriggers();
 
         GameObject* GetGameObject(uint32 spellId) const;
+		GameObject* GetGameObjectBySlot(uint8 slot) const;
         void AddGameObject(GameObject* gameObj);
         void RemoveGameObject(GameObject* gameObj, bool del);
         void RemoveGameObject(uint32 spellid, bool del);
@@ -2325,6 +2329,10 @@ class Unit : public WorldObject
         uint32 GetLastEclipsePower() { return eclipseSpellId; }
         void RemoveLastEclipsePower() { eclipseSpellId = 0; }
 
+		// for instant procs from spells, that can proc while spell is casting
+		void SetAuraBeforeInstantCast(bool auraBeforeInstantCast) { hasAuraBeforeInstantCast = auraBeforeInstantCast; }
+		bool GetAuraBeforeInstantCast() { return hasAuraBeforeInstantCast; }
+
         // helpers for Icicles spells
         uint64 GetIciclesTarget() const { return iciclesTargetGUID; }
         void SetIciclesTarget(uint64 guid) { iciclesTargetGUID = guid; }
@@ -2386,7 +2394,33 @@ class Unit : public WorldObject
         AuraApplicationList m_interruptableAuras;             // auras which have interrupt mask applied on unit
         AuraStateAurasMap m_auraStateAuras;        // Used for improve performance of aura state checks on aura apply/remove
         uint32 m_interruptMask;
-        AuraList _SoulSwapDOTList;
+		public:
+
+		struct SoulSwapAuraInfo
+		{
+			SoulSwapAuraInfo(uint32 p_ID, uint32 p_Duration, uint32 p_MaxDuration, uint32 p_Charges, uint32 p_Stacks) :
+				m_ID(p_ID), m_Duration(p_Duration), m_MaxDuration(p_MaxDuration), m_Charges(p_Charges), m_Stacks(p_Stacks)
+			{
+				memset(m_FixedDamages, 0, sizeof(uint32) * MAX_EFFECTS);
+				memset(m_FixedTotalDamages, 0, sizeof(uint32) * MAX_EFFECTS);
+				memset(m_FixedCritical, 0, sizeof(uint32) * MAX_EFFECTS);
+				memset(m_FixedAmplitude, 0, sizeof(uint32) * MAX_EFFECTS);
+			}
+
+			uint32 m_ID;
+			uint32 m_Duration;
+			uint32 m_MaxDuration;
+			uint32 m_Charges;
+			uint32 m_Stacks;
+
+			uint32 m_FixedDamages[MAX_EFFECTS];
+			uint32 m_FixedTotalDamages[MAX_EFFECTS];
+			uint32 m_FixedCritical[MAX_EFFECTS];
+			uint32 m_FixedAmplitude[MAX_EFFECTS];
+		};
+
+		uint64 m_SoulSwapTarget;
+		std::vector<SoulSwapAuraInfo> m_SoulSwapDOTList;
 
         typedef std::list<HealDamageLog> HealDamageLogList;
         HealDamageLogList m_healDamage;
@@ -2477,12 +2511,14 @@ class Unit : public WorldObject
         uint32 m_state;                                     // Even derived shouldn't modify
         uint32 m_CombatTimer;
         TimeTrackerSmall m_movesplineTimer;
+		Diminishing m_Diminishing;
 
         uint64 simulacrumTargetGUID;
         uint64 iciclesTargetGUID;
         uint32 eclipseSpellId;
 
-        Diminishing m_Diminishing;
+		bool hasAuraBeforeInstantCast;
+        
         // Manage all Units that are threatened by us
         HostileRefManager m_HostileRefManager;
 

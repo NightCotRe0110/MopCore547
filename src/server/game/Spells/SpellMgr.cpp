@@ -1,4 +1,4 @@
-/*
+﻿/*
 * Copyright (C) 2008-2012 TrinityCore <http://www.trinitycore.org/>
 * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
 *
@@ -4703,9 +4703,6 @@ void SpellMgr::LoadSpellCustomAttr()
                     spellInfo->Effects[0].Mechanic = MECHANIC_SNARE;
                     spellInfo->OverrideSpellList.push_back(106996); // Replace Hurricane by Astral Storm
                     break;
-                case 80240: // Havoc
-                    spellInfo->StackAmount = 6;
-                    break;
                 case 5487:  // Bear Form
                     spellInfo->Effects[2].BasePoints = 120;
                     break;
@@ -8948,6 +8945,13 @@ void SpellMgr::LoadSpellCustomAttr()
                 case 99173: // Burning Wounds, Item - Rogue T12 2P Bonus
                     spellInfo->AttributesCu |= SPELL_ATTR0_CU_DONT_RESET_PERIODIC_TIMER;
                     break;
+				case 80240: // Havoc
+					spellInfo->ProcCharges = 3;
+					spellInfo->Effects[1].ApplyAuraName = SPELL_AURA_DUMMY;
+					break;
+				case 111771: ///< Demonic Gateway
+					spellInfo->Effects[EFFECT_1].Effect = 0;
+					break;
             }
 
             // Spells which update last tick (only one tick)

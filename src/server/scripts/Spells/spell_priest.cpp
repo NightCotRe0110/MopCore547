@@ -456,9 +456,10 @@ class spell_pri_spirit_of_redemption : public SpellScriptLoader
         {
             PrepareAuraScript(spell_pri_spirit_of_redemption_AuraScript);
 
-            void CalculateAmount(constAuraEffectPtr /*auraEffect*/, int32& amount, bool& /*canBeRecalculated*/)
+            bool CalculateAmount(constAuraEffectPtr /*auraEffect*/, int32& amount, bool& /*canBeRecalculated*/)
             {
                 amount = -1;
+				return true;
             }
 
             void Absorb(AuraEffectPtr /*auraEffect*/, DamageInfo& dmgInfo, uint32& absorbAmount)
@@ -483,7 +484,7 @@ class spell_pri_spirit_of_redemption : public SpellScriptLoader
             void Register()
             {
                 DoEffectCalcAmount += AuraEffectCalcAmountFn(spell_pri_spirit_of_redemption_AuraScript::CalculateAmount, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB);
-                OnEffectAbsorb += AuraEffectAbsorbFn(spell_pri_spirit_of_redemption_AuraScript::Absorb, EFFECT_0);
+                OnEffectAbsorb += AuraEffectAbsorbFn(spell_pri_spirit_of_redemption_AuraScript::Absorb, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB);
             }
         };
 
@@ -1574,10 +1575,10 @@ class spell_pri_devouring_plague : public SpellScriptLoader
                 return true;
             }
 
-            void CalculateAmount(constAuraEffectPtr /*auraEffect*/, int32& amount, bool& /*canBeRecalculated*/)
+            bool CalculateAmount(constAuraEffectPtr /*auraEffect*/, int32& amount, bool& /*canBeRecalculated*/)
             {
                 if (!GetCaster())
-                    return;
+                    return false;
 
                 powerUsed = GetCaster()->GetPower(POWER_SHADOW_ORBS) + 1;
                 if (GetCaster()->HasAura(145179))
@@ -1589,14 +1590,16 @@ class spell_pri_devouring_plague : public SpellScriptLoader
                 int32 spellPower = GetCaster()->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_HOLY);
 
                 amount = int32((amount + (spellPower * 0.131f)) * powerUsed);
+				return true;
             }
 
-            void CalculateSecondAmount(constAuraEffectPtr /*auraEffect*/, int32& amount, bool& /*canBeRecalculated*/)
+            bool CalculateSecondAmount(constAuraEffectPtr /*auraEffect*/, int32& amount, bool& /*canBeRecalculated*/)
             {
                 if (!GetCaster())
-                    return;
+                    return false;
 
                 amount = powerUsed;
+				return true;
             }
 
             void OnTick(constAuraEffectPtr aurEff)
@@ -2371,10 +2374,11 @@ class spell_pri_guardian_spirit : public SpellScriptLoader
                 return true;
             }
 
-            void CalculateAmount(constAuraEffectPtr /*aurEff*/, int32 & amount, bool & /*canBeRecalculated*/)
+            bool CalculateAmount(constAuraEffectPtr /*aurEff*/, int32 & amount, bool & /*canBeRecalculated*/)
             {
                 // Set absorbtion amount to unlimited
                 amount = -1;
+				return true;
             }
 
             void Absorb(AuraEffectPtr /*aurEff*/, DamageInfo & dmgInfo, uint32 & absorbAmount)
@@ -2393,7 +2397,7 @@ class spell_pri_guardian_spirit : public SpellScriptLoader
             void Register()
             {
                 DoEffectCalcAmount += AuraEffectCalcAmountFn(spell_pri_guardian_spirit_AuraScript::CalculateAmount, EFFECT_2, SPELL_AURA_SCHOOL_ABSORB);
-                OnEffectAbsorb += AuraEffectAbsorbFn(spell_pri_guardian_spirit_AuraScript::Absorb, EFFECT_2);
+                OnEffectAbsorb += AuraEffectAbsorbFn(spell_pri_guardian_spirit_AuraScript::Absorb, EFFECT_2, SPELL_AURA_SCHOOL_ABSORB);
             }
         };
 
@@ -2515,7 +2519,7 @@ class spell_pri_reflective_shield_trigger : public SpellScriptLoader
 
             void Register()
             {
-                 AfterEffectAbsorb += AuraEffectAbsorbFn(spell_pri_reflective_shield_trigger_AuraScript::Trigger, EFFECT_0);
+                 AfterEffectAbsorb += AuraEffectAbsorbFn(spell_pri_reflective_shield_trigger_AuraScript::Trigger, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB);
             }
         };
 

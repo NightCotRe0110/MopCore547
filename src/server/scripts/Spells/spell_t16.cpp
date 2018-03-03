@@ -584,9 +584,10 @@ public:
     {
         PrepareAuraScript(spell_endurance_of_niuzao_AuraScript);
 
-        void CalculateAmount(constAuraEffectPtr aurEff, int32 & amount, bool & canBeRecalculated)
+        bool CalculateAmount(constAuraEffectPtr aurEff, int32 & amount, bool & canBeRecalculated)
         {
             amount = -1;
+			return true;
         }
 
         void Absorb(AuraEffectPtr /*aurEff*/, DamageInfo & dmgInfo, uint32 & absorbAmount)
@@ -604,7 +605,7 @@ public:
         void Register()
         {
             DoEffectCalcAmount += AuraEffectCalcAmountFn(spell_endurance_of_niuzao_AuraScript::CalculateAmount, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB);
-            OnEffectAbsorb += AuraEffectAbsorbFn(spell_endurance_of_niuzao_AuraScript::Absorb, EFFECT_0);
+            OnEffectAbsorb += AuraEffectAbsorbFn(spell_endurance_of_niuzao_AuraScript::Absorb, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB);
         }
     };
 

@@ -67,6 +67,8 @@ class Log
 
         void OutSpecialLog(const char* str, ...);
 
+		void OutTrinity(const char* str, ...);
+
         void EnableDBAppenders();
         static std::string GetTimestampStr();
         
