@@ -86,7 +86,9 @@ Log::~Log() {
         Log::commonLog = NULL;
     }
 
-    fclose(logFile);
+	if (logFile) {
+		fclose(logFile);
+	}
 }
 
 

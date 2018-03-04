@@ -1,5 +1,5 @@
 ################################################
-# MopCore World Server configuration file #
+# MopCore World Server configuration file      #
 ################################################
 [worldserver]
 
@@ -27,6 +27,9 @@
 #    CONSOLE AND REMOTE ACCESS
 #    CHARACTER DELETE OPTIONS
 #    CUSTOM SERVER OPTIONS
+#    LOGGING SYSTEM SETTINGS
+#    CURRENCIES SETTINGS
+#    CUSTOM SETTINGS
 #    VIP CONFIG
 #
 ###################################################################################################
@@ -60,10 +63,10 @@ RealmID = 1
 #    DataDir
 #        Description: Data directory setting.
 #        Important:   DataDir needs to be quoted, as the string might contain space characters.
-#        Example:     "@prefix@/share/trinitycore"
+#        Example:     "@prefix@/share/mopcore"
 #        Default:     "."
 
-DataDir = "."
+DataDir = "data"
 
 #
 #    LogsDir
@@ -89,9 +92,9 @@ LogsDir = "logs"
 #                     "127.0.0.1;3306;mopcore;mopcore;characters" - (CharacterDatabaseInfo)
 #                     "127.0.0.1;3306;mopcore;mopcore;world"      - (WorldDatabaseInfo)
 
-LoginDatabaseInfo     = "127.0.0.1;3306;mopcore;mopcore;auth"
-CharacterDatabaseInfo = "127.0.0.1;3306;mopcore;mopcore;characters"
-WorldDatabaseInfo     = "127.0.0.1;3306;mopcore;mopcore;world"
+LoginDatabaseInfo     = "127.0.0.1;3307;root;ascent;auth"
+CharacterDatabaseInfo = "127.0.0.1;3307;root;ascent;characters"
+WorldDatabaseInfo     = "127.0.0.1;3307;root;ascent;world"
 
 #
 #    LoginDatabase.WorkerThreads
@@ -275,7 +278,7 @@ PlayerSave.Stats.SaveOnlyOnLogout = 1
 #        Default:     0 - (Disabled)
 #                     1 - (Enabled)
 
-mmap.enablePathFinding = 1
+mmap.enablePathFinding = 0
 
 #
 #    vmap.enableLOS
@@ -613,7 +616,7 @@ StrictPetNames = 3
 #                     7   - (Spanish Mexico)
 #                     8   - (Russian)
 
-DBC.Locale = 0
+DBC.Locale = 1
 
 #
 #    DeclinedNames
@@ -673,6 +676,7 @@ MaxWhoListReturns = 49
 #                     1 - (Disabled, Alliance)
 #                     2 - (Disabled, Horde)
 #                     3 - (Disabled, Both factions)
+#                     4 - (Disabled, Neutral)
 
 CharacterCreating.Disabled = 0
 
@@ -689,8 +693,13 @@ CharacterCreating.Disabled = 0
 #                     32   - (Disabled, Tauren)
 #                     64   - (Disabled, Gnome)
 #                     128  - (Disabled, Troll)
+#                     256  - (Disabled, Goblin)
 #                     512  - (Disabled, Blood Elf)
 #                     1024 - (Disabled, Draenei)
+#                     2097152 - (Disabled, Worgen)
+#                     8388608 - (Disabled, Pandaren Neutral)
+#                     16777216 - (Disabled, Pandaren Alliance)
+#                     33554432 - (Disabled, Pandaren Horde)
 
 CharacterCreating.Disabled.RaceMask = 0
 
@@ -708,6 +717,7 @@ CharacterCreating.Disabled.RaceMask = 0
 #                     64   - (Disabled, Shaman)
 #                     128  - (Disabled, Mage)
 #                     256  - (Disabled, Warlock)
+#                     512  - (Disabled, Monk)
 #                     1024 - (Disabled, Druid)
 
 CharacterCreating.Disabled.ClassMask = 0
@@ -891,7 +901,7 @@ DisableFatigue = 4
 #        Default:     0 - (Disabled)
 #                     1 - (Enabled)
 
-AllFlightPaths = 0
+AllFlightPaths = 1
 
 #
 #    InstantFlightPaths
@@ -900,7 +910,7 @@ AllFlightPaths = 0
 #        Default:     0 - (Disabled)
 #                     1 - (Enabled)
 
-InstantFlightPaths = 0
+InstantFlightPaths = 1
 
 #
 #    ActivateWeather
@@ -1108,8 +1118,8 @@ BeepAtStart = 1
 #    Motd
 #        Description: Message of the Day, displayed at login.
 #                     Use '@' for a newline and be sure to escape special characters.
-#        Example:     "Welcome to John\'s Server@This server runs on Trinity Core."
-#        Default:     "Welcome to a Trinity Core server."
+#        Example:     "Welcome to John\'s Server@This server runs on MopCore."
+#        Default:     "Welcome to a MopCore server."
 
 Motd = "Welcome to the World of Warcraft Mists of Pandaria"
 
@@ -2004,7 +2014,7 @@ Rate.Talent = 1
 #        Description: Reputation gain rate.
 #        Default:     1
 
-Rate.Reputation.Gain = 1
+Rate.Reputation.Gain = 10
 
 #
 #    Rate.Reputation.LowLevel.Kill
@@ -2032,7 +2042,7 @@ Rate.Reputation.RecruitAFriendBonus = 0.1
 #        Description: Movement speed rate.
 #        Default:     1
 
-Rate.MoveSpeed = 1
+Rate.MoveSpeed = 1.2
 
 #
 #    Rate.InstanceResetTime
@@ -2051,8 +2061,8 @@ Rate.InstanceResetTime = 1
 #        Default:     1 - (SkillGain.Crafting)
 #                     1 - (SkillGain.Gathering)
 
-SkillGain.Crafting  = 1
-SkillGain.Gathering = 1
+SkillGain.Crafting  = 10
+SkillGain.Gathering = 10
 
 #
 #    SkillChance.Orange
@@ -2755,8 +2765,7 @@ PlayerDump.DisallowOverwrite = 1
 ###################################################################################################
 
 ###################################################################################################
-#
-#  Logging system options.
+#  LOGGING SYSTEM SETTINGS
 #
 #  Appender config values: Given a appender "name"
 #    Appender.name
@@ -2813,18 +2822,18 @@ PlayerDump.DisallowOverwrite = 1
 #                          w - (Overwrite)
 #
 
-Appender.Console=1,3,0
-Appender.Server=2,2,0,Server.log,w
-Appender.GM=2,2,0,GM.log
-Appender.DBErrors=2,2,0,DBErrors.log
-Appender.Char=2,2,0,Char.log,w
-Appender.RA=2,2,0,RA.log
-Appender.Warden=2,4,0,Warden.log
+Appender.Console=1,3,0,9 9 9 13 9 9
+Appender.Server=2,2,3,Server.log,w
+Appender.GM=2,2,3,GM.log
+Appender.DBErrors=2,2,3,DBErrors.log
+Appender.Char=2,2,3,Char.log,w
+Appender.RA=2,2,3,RA.log
+Appender.Warden=2,4,3,Warden.log
 Appender.Chat=2,2,3,Chat.log
-Appender.CharDump=2,2,0,%s.log
-Appender.Arenas=2,2,0,Arena.log
-Appender.SQLDev=2,2,0,SQLDev.log
-Appender.SQLDriver=2,2,0,SQLDriver.log
+Appender.CharDump=2,2,3,%s.log
+Appender.Arenas=2,2,3,Arena.log
+Appender.SQLDev=2,2,3,SQLDev.log
+Appender.SQLDriver=2,2,3,SQLDriver.log
 
 #    Appenders
 #        Description: List of Appenders to read from config
@@ -2968,7 +2977,6 @@ Loggers=Root Chat DBErrors GM RA Warden Character Load WorldServer Opcodes
 ###################################################################################################
 
 ###################################################################################################
-#
 #  GUILD LEVELING SETTINGS
 #
 #    Guild.LevelingEnabled
@@ -3030,7 +3038,6 @@ Guild.WeeklyReputationCap = 4375
 ###################################################################################################
 
 ###################################################################################################
-#
 # CURRENCIES SETTINGS
 #
 #    Currency.ResetInterval
