@@ -22,8 +22,12 @@
  */
 
 #include "ScriptMgr.h"
+#include "Cell.h"
+#include "CellImpl.h"
+#include "GridNotifiersImpl.h"
 #include "GridNotifiers.h"
 #include "Unit.h"
+#include "SpellScript.h"
 #include "SpellScript.h"
 #include "SpellAuraEffects.h"
 
@@ -34,10 +38,10 @@ enum ShamanSpells
     HUNTER_SPELL_INSANITY                   = 95809,
     MAGE_SPELL_TEMPORAL_DISPLACEMENT        = 80354,
     SPELL_SHA_LIGHTNING_SHIELD_AURA         = 324,
-    SPELL_SHA_ASCENDANCE_ELEMENTAL	         = 114050,
+    SPELL_SHA_ASCENDANCE_ELEMENTAL	        = 114050,
     SPELL_SHA_ASCENDANCE_RESTORATION        = 114052,
-    SPELL_SHA_ASCENDANCE_ENHANCED	         = 114051,
-    SPELL_SHA_ASCENDANCE			  = 114049,
+    SPELL_SHA_ASCENDANCE_ENHANCED	        = 114051,
+    SPELL_SHA_ASCENDANCE			        = 114049,
     SPELL_SHA_HEALING_RAIN                  = 142923,
     SPELL_SHA_HEALING_RAIN_TICK             = 73921,
     SPELL_SHA_HEALING_RAIN_AURA             = 73920,
@@ -94,8 +98,61 @@ enum ShamanSpells
     SPELL_SHA_LAVA_BURST                    = 51505,
     SPELL_SHA_ITEM_S12_4P_ENHANCEMENT_BONUS = 131554,
     SPELL_SHA_RESTORATIVE_MISTS             = 114083,
-    SPELL_SHA_GLYPH_OF_TELLURIC_CURRENTS    = 55453
+    SPELL_SHA_GLYPH_OF_TELLURIC_CURRENTS    = 55453,
+    SPELL_SHA_LAVA_SURGE                    = 77762,
+    SHAMAN_ITEM_T16_ELEMENTAL_2P_BONUS      = 144998,
+    SPELL_SHA_ELEMENTAL_DISCHARGE           = 144999,
+    GLYPH_SHA_FAR_SIGHT                     = 58059,
+    SPELL_SHA_GLYPH_OF_RAIN_OF_FROGS        = 147707,
+    SPELL_SHA_RAIN_OF_FROGS                 = 147709,
+    SPELL_SHA_GLYPH_OF_ELEMENTAL_FAMILIARS  = 147788,
+    SPELL_SHA_ELEMENTAL_FAMILIAR            = 148118,
+    SPELL_SHA_T15_ENCH_SET_2P_BONUS         = 138136,
+    SPELL_SHA_T15_ELEM_SET_4P_BONUS         = 138144,
+    SPELL_SHA_ELE_BLAST_MASTERY             = 120588,
+    SHAMAN_SHA_ITEM_T16_4P                  = 144966,
+    SHAMAN_SHA_ITEM_T16_2P                  = 144962
 };
+
+/* Called by SHAMAN_SHA_ITEM_T16_4P
+class spell_sha_flame_shock : public SpellScriptLoader
+{
+    public:
+        spell_sha_flame_shock() : SpellScriptLoader("spell_sha_flame_shock") { }
+        
+        class spell_sha_flame_shock_SpellScript : public SpellScript
+        {
+            PrepareSpellScript(spell_sha_flame_shock_SpellScript);
+            
+            void OnTick(AuraEffect const* aurEff)
+            {
+				if (!GetCaster())
+					return;
+				if (Player* _player = GetCaster()->ToPlayer())
+				{
+                    _player->HasAura(SHAMAN_SHA_ITEM_T16_4P)
+                    {
+					    if (roll_chance_i(5))
+					    {
+						_player->AddAura(SPELL_SHA_SEARING_FLAMES_DAMAGE_DONE, _player);
+                        _player->AddAura(SPELL_SHA_SEARING_FLAMES_DAMAGE_DONE, _player);
+                        _player->AddAura(SPELL_SHA_SEARING_FLAMES_DAMAGE_DONE, _player);
+                        _player->AddAura(SPELL_SHA_SEARING_FLAMES_DAMAGE_DONE, _player);
+                        _player->AddAura(SPELL_SHA_SEARING_FLAMES_DAMAGE_DONE, _player);
+                        
+						if (_player->HasSpellCooldown(SPELL_SHA_LAVA_LASH))
+                                _player->RemoveSpellCooldown(SPELL_SHA_LAVA_LASH, true);
+					    }
+                    }
+                }
+            }
+        
+            void Register()
+                {
+                    OnEffectPeriodic += AuraEffectPeriodicFn(spell_sha_flame_shock_AuraScript::OnTick, EFFECT_0, SPELL_AURA_PERIODIC_DAMAGE);
+                }
+};
+*/
 
 // Totemic Projection - 108287
 class spell_sha_totemic_projection : public SpellScriptLoader
@@ -103,45 +160,74 @@ class spell_sha_totemic_projection : public SpellScriptLoader
     public:
         spell_sha_totemic_projection() : SpellScriptLoader("spell_sha_totemic_projection") { }
 
-	class spell_sha_totemic_projection_SpellScript : public SpellScript
-	{
-		PrepareSpellScript(spell_sha_totemic_projection_SpellScript);
+        class spell_sha_totemic_projection_SpellScript : public SpellScript
+        {
+            PrepareSpellScript(spell_sha_totemic_projection_SpellScript);
 
-		std::list<Creature*> Totem_List;
+            void HandleDummy(SpellEffIndex /*effIndex*/)
+            {
+                if (Unit* caster = GetCaster())
+                {
+                    std::list<Creature*> leapList;
+                    Unit* leapTarget = NULL;
 
-		void HandleAfterCast()
-		{
-			if (!GetCaster())
-				return;
-			Player* player = GetCaster()->ToPlayer();
-			if (!player)
-				return;
-			const WorldLocation* summonPos = GetExplTargetDest();
+                    caster->GetCreatureListWithEntryInGrid(leapList, 47319, 45.0f);
 
-			MoPCore::AnyUnitInObjectRangeCheck check(player, 20.0f);
-			MoPCore::CreatureListSearcher<MoPCore::AnyUnitInObjectRangeCheck> searcher(player, Totem_List, check);
+                    for (auto itr : leapList)
+                    {
+                        if (!itr->ToUnit() || !itr->ToTempSummon())
+                            continue;
 
-			player->VisitNearbyObject(20.0f, searcher);
+                        if (!itr->ToTempSummon()->GetSummoner())
+                            continue;
 
-			for (std::list<Creature*>::const_iterator it = Totem_List.begin(); it != Totem_List.end(); ++it)
-			{
-				if ((*it)->GetEntry() != 15352 || (*it)->GetEntry() != 61029 || (*it)->GetEntry() != 61056)
-				{
-					if ((*it)->GetUInt64Value(UNIT_FIELD_SUMMONEDBY) == player->GetGUID())
-					{
-						(*it)->SetSpeed(MOVE_RUN, 20.0f, true);
-						(*it)->GetMotionMaster()->MovePoint(1, summonPos->GetPositionX(), summonPos->GetPositionY(), summonPos->GetPositionZ());
-						(*it)->RemoveAura(1784, (*it)->GetGUID());
-					}
-				}
-			}
-		}
-		void Register()
-		{
-			AfterCast += SpellCastFn(spell_sha_totemic_projection_SpellScript::HandleAfterCast);
-		}
- 
-	};
+                        if (itr->ToTempSummon()->GetSummoner()->GetGUID() != caster->GetGUID())
+                            continue;
+
+                        leapTarget = itr->ToUnit();
+                        break;
+                    }
+
+                    if (!leapTarget)
+                        return;
+
+                    for (Unit::ControlList::const_iterator itr = caster->m_Controlled.begin(); itr != caster->m_Controlled.end(); ++itr)
+                    {
+                        if ((*itr)->isTotem())
+                        {
+                            SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo((*itr)->GetUInt32Value(UNIT_CREATED_BY_SPELL));
+                            if (!spellInfo)
+                                continue;
+
+                            float objSize = caster->GetObjectSize();
+                            float angle = spellInfo->Effects[0].TargetA.CalcDirectionAngle();
+                            float dist = spellInfo->Effects[0].CalcRadius(caster);
+
+                            if (dist < objSize)
+                                dist = objSize;
+
+                            Position pos;
+                            leapTarget->GetPosition(&pos);
+
+                            angle += (*itr)->GetOrientation();
+                            float destx, desty, destz, ground, floor;
+                            destx = pos.m_positionX + dist * std::cos(angle);
+                            desty = pos.m_positionY + dist * std::sin(angle);
+                            ground = (*itr)->GetMap()->GetHeight((*itr)->GetPhaseMask(), destx, desty, MAX_HEIGHT, true);
+                            floor = (*itr)->GetMap()->GetHeight((*itr)->GetPhaseMask(), destx, desty, pos.m_positionZ, true);
+                            destz = fabs(ground - pos.m_positionZ) <= fabs(floor - pos.m_positionZ) ? ground : floor;
+
+                            (*itr)->NearTeleportTo(destx, desty, destz, (*itr)->GetOrientation());
+                        }
+                    }
+                }
+            }
+
+            void Register()
+            {
+                OnEffectHitTarget += SpellEffectFn(spell_sha_totemic_projection_SpellScript::HandleDummy, EFFECT_1, SPELL_EFFECT_DUMMY);
+            }
+        };
 
         SpellScript* GetSpellScript() const
         {
@@ -159,7 +245,7 @@ class spell_sha_hex : public SpellScriptLoader
         {
             PrepareAuraScript(spell_sha_hex_AuraScript);
 
-            void OnApply(constAuraEffectPtr aurEff, AuraEffectHandleModes /*mode*/)
+            void OnApply(AuraEffect const* aurEff, AuraEffectHandleModes /*mode*/)
             {
                 if (Unit* target = GetTarget())
                 {
@@ -199,7 +285,7 @@ class spell_sha_water_ascendant : public SpellScriptLoader
         {
             PrepareAuraScript(spell_sha_water_ascendant_AuraScript);
 
-            void OnProc(constAuraEffectPtr aurEff, ProcEventInfo& eventInfo)
+            void OnProc(AuraEffect const* aurEff, ProcEventInfo& eventInfo)
             {
                 PreventDefaultAction();
 
@@ -219,7 +305,10 @@ class spell_sha_water_ascendant : public SpellScriptLoader
                 if (!eventInfo.GetDamageInfo()->GetSpellInfo())
                     return;
 
-                if (eventInfo.GetDamageInfo()->GetSpellInfo()->Id == SPELL_SHA_RESTORATIVE_MISTS || eventInfo.GetDamageInfo()->GetSpellInfo()->Id == SPELL_SHA_ANCESTRAL_GUIDANCE)
+                if (eventInfo.GetDamageInfo()->GetSpellInfo()->Id == SPELL_SHA_RESTORATIVE_MISTS)
+                    return;
+
+                if (eventInfo.GetDamageInfo()->GetSpellInfo()->Id == SPELL_SHA_ANCESTRAL_GUIDANCE)
                     return;
 
                 if (!(eventInfo.GetHealInfo()->GetHeal()))
@@ -253,7 +342,7 @@ class spell_sha_water_ascendant : public SpellScriptLoader
                         if (bp > 0)
                             _player->CastCustomSpell((*alliesList.begin()), SPELL_SHA_RESTORATIVE_MISTS, &bp, NULL, NULL, true);   // Restorative Mists
 
-                        _player->AddSpellCooldown(SPELL_SHA_RESTORATIVE_MISTS, 0, time(NULL) + 1);               // This prevent from multiple procs
+                        _player->AddSpellCooldown(SPELL_SHA_RESTORATIVE_MISTS, 0, 1 * IN_MILLISECONDS);               // This prevent from multiple procs
                     }
                 }
             }
@@ -308,7 +397,7 @@ class spell_sha_solar_beam : public SpellScriptLoader
         {
             PrepareAuraScript(spell_sha_solar_beam_AuraScript);
 
-            void OnTick(constAuraEffectPtr aurEff)
+            void OnTick(AuraEffect const* aurEff)
             {
                 if (DynamicObject* dynObj = GetCaster()->GetDynObject(SPELL_SHA_SOLAR_BEAM))
                     GetCaster()->CastSpell(dynObj->GetPositionX(), dynObj->GetPositionY(), dynObj->GetPositionZ(), SPELL_SHA_SOLAR_BEAM_SILENCE, true);
@@ -348,8 +437,26 @@ class spell_sha_glyph_of_shamanistic_rage : public SpellScriptLoader
                         if (!dispelList.empty())
                         {
                             for (auto itr : dispelList)
+                            {
+                                // Hack for Unstable Affliction
+                                if (itr.first->GetId() == 30108)
+                                {
+                                    if (Unit* originalCaster = itr.first->GetCaster())
+                                    {
+                                        if (AuraEffect const* aurEff = _player->GetAuraEffect(30108, EFFECT_0, originalCaster->GetGUID()))
+                                        {
+                                            int32 damage = aurEff->GetAmount() * 8;
+                                            // backfire damage and silence
+                                            originalCaster->CastCustomSpell(_player, 31117, &damage, NULL, NULL, true, NULL, aurEff);
+                                            if (!_player->HasAura(31117))
+                                                originalCaster->AddAura(31117, _player);
+                                        }
+                                    }
+                                }
+
                                 if (_player->HasAura(itr.first->GetId()))
                                     _player->RemoveAura(itr.first);
+                            }
                         }
                     }
                 }
@@ -419,10 +526,16 @@ class spell_sha_call_of_the_elements : public SpellScriptLoader
                         if (!spellInfo)
                             continue;
 
-                        if (spellInfo->Id == 51485 || spellInfo->Id == 108273 || spellInfo->Id == 108270
-                            || spellInfo->Id == 108269 || spellInfo->Id == 8143 || spellInfo->Id == 8177
-                            || spellInfo->Id == 5394 || spellInfo->Id == 2484 || spellInfo->Id == 108273
-                            && spellInfo->GetRecoveryTime() > 0)
+                        if ((spellInfo->Id == 51485 || 
+                            spellInfo->Id == 108273 || 
+                            spellInfo->Id == 108270 ||
+                            spellInfo->Id == 108269 || 
+                            spellInfo->Id == 8143 || 
+                            spellInfo->Id == 8177 ||
+                            spellInfo->Id == 5394 || 
+                            spellInfo->Id == 2484 || 
+                            spellInfo->Id == 108273) &&
+                             spellInfo->GetRecoveryTime() > 0)
                             _player->RemoveSpellCooldown((itr++)->first, true);
                         else
                             ++itr;
@@ -444,8 +557,8 @@ class spell_sha_call_of_the_elements : public SpellScriptLoader
 
 // Called by Healing Wave - 331, Greater Healing Wave - 77472 and Healing Surge - 8004
 // Called by Lightning Bolt - 403, Chain Lightning - 421, Earth Shock - 8042 and Stormstrike - 17364
-// Called by Lightning Bolt - 45284, Chain Lightning - 45297
-// Conductivity - 108282
+// Called by Lightning Bolt - 45284, Chain Lightning - 45297, Chain Heal - 1064
+/// Conductivity - 108282
 class spell_sha_conductivity : public SpellScriptLoader
 {
     public:
@@ -455,27 +568,40 @@ class spell_sha_conductivity : public SpellScriptLoader
         {
             PrepareSpellScript(spell_sha_conductivity_SpellScript);
 
+            bool m_Effective;
+            
+            bool Load() override
+            {
+                m_Effective = true;
+                return true;
+            }
+            
             void HandleAfterHit()
             {
-                if (Player* _player = GetCaster()->ToPlayer())
+                if (!m_Effective)
+                    return;
+
+                if (Unit* l_Caster = GetCaster())
                 {
-                    if (Unit* target = GetHitUnit())
+                    if (Unit* l_Target = GetHitUnit())
                     {
-                        if (AuraPtr conductivity = _player->GetAura(SPELL_SHA_CONDUCTIVITY_TALENT))
+                        if (AuraEffect* l_ConductivityEffect = l_Caster->GetAuraEffect(ShamanSpells::SPELL_SHA_CONDUCTIVITY_TALENT, SpellEffIndex::EFFECT_2))
                         {
-                            if (DynamicObject* dynObj = _player->GetDynObject(SPELL_SHA_HEALING_RAIN))
+                            if (DynamicObject* l_RainObj = l_Caster->GetDynObject(ShamanSpells::SPELL_SHA_HEALING_RAIN))
                             {
-                                uint32 remainingDuration = conductivity->GetEffect(2)->GetAmount();
-                                uint32 addDuration = std::min(remainingDuration, uint32(4000));
+                                uint32 l_RemainingDuration = l_ConductivityEffect->GetAmount();
+                                uint32 l_AddDuration = std::min(l_RemainingDuration, uint32(4000));
 
-                                dynObj->SetDuration(dynObj->GetDuration() + addDuration);
-                                conductivity->GetEffect(2)->SetAmount(remainingDuration - addDuration);
+                                l_RainObj->SetDuration(l_RainObj->GetDuration() + l_AddDuration);
+                                l_ConductivityEffect->SetAmount(l_RemainingDuration - l_AddDuration);
 
-                                if (AuraPtr healingRain = _player->GetAura(SPELL_SHA_HEALING_RAIN_AURA))
+                                if (Aura* l_HealingRain = l_Caster->GetAura(ShamanSpells::SPELL_SHA_HEALING_RAIN_AURA))
                                 {
-                                    healingRain->SetDuration(healingRain->GetDuration() + addDuration);
-                                    healingRain->SetMaxDuration(healingRain->GetMaxDuration() + addDuration);
+                                    l_HealingRain->SetDuration(l_HealingRain->GetDuration() + l_AddDuration);
+                                    l_HealingRain->SetMaxDuration(l_HealingRain->GetMaxDuration() + l_AddDuration);
                                 }
+
+                                m_Effective = false;
                             }
                         }
                     }
@@ -504,14 +630,14 @@ class spell_sha_ancestral_guidance : public SpellScriptLoader
         {
             PrepareAuraScript(spell_sha_ancestral_guidance_AuraScript);
 
-            void OnProc(constAuraEffectPtr aurEff, ProcEventInfo& eventInfo)
+            void OnProc(AuraEffect const* aurEff, ProcEventInfo& eventInfo)
             {
                 PreventDefaultAction();
 
                 if (!GetCaster())
                     return;
 
-                Player* _player = GetCaster()->ToPlayer();
+                Unit* _player = GetCaster();
                 if (!_player)
                     return;
 
@@ -521,7 +647,10 @@ class spell_sha_ancestral_guidance : public SpellScriptLoader
                 if (!eventInfo.GetDamageInfo()->GetSpellInfo())
                     return;
 
-                if (eventInfo.GetDamageInfo()->GetSpellInfo()->Id == SPELL_SHA_ANCESTRAL_GUIDANCE || eventInfo.GetDamageInfo()->GetSpellInfo()->Id == SPELL_SHA_RESTORATIVE_MISTS)
+                if (eventInfo.GetDamageInfo()->GetSpellInfo()->Id == SPELL_SHA_ANCESTRAL_GUIDANCE)
+                    return;
+
+                if (eventInfo.GetDamageInfo()->GetSpellInfo()->Id == SPELL_SHA_RESTORATIVE_MISTS)
                     return;
 
                 if (!(eventInfo.GetDamageInfo()->GetDamage()) && !(eventInfo.GetHealInfo()->GetHeal()))
@@ -532,9 +661,16 @@ class spell_sha_ancestral_guidance : public SpellScriptLoader
 
                 if (Unit* target = eventInfo.GetActionTarget())
                 {
-                    int32 bp = eventInfo.GetDamageInfo()->GetDamage() > eventInfo.GetHealInfo()->GetHeal() ? (eventInfo.GetDamageInfo()->GetDamage() * 0.6f) : (eventInfo.GetHealInfo()->GetHeal() * 0.4f);
-                    if (!bp)
+                    int32 damage = eventInfo.GetDamageInfo()->GetDamage();
+                    int32 heal = eventInfo.GetHealInfo()->GetHeal();
+                    if (!damage && !heal)
                         return;
+
+                    int32 bp;
+                    if (damage > heal)
+                        bp = CalculatePct(damage, 40);
+                    else
+                        bp = CalculatePct(heal, 60);
 
                     _player->CastCustomSpell(target, SPELL_SHA_ANCESTRAL_GUIDANCE, &bp, NULL, NULL, true);
                 }
@@ -552,45 +688,62 @@ class spell_sha_ancestral_guidance : public SpellScriptLoader
         }
 };
 
-// Ancestral Guidance - Targetting - 114911
-class spell_sha_ancestral_guidance_targetting : public SpellScriptLoader
+// Ancestral Guidance - 114911 - effect
+class spell_sha_ancestral_guidance_heal : public SpellScriptLoader
 {
-public:
-	spell_sha_ancestral_guidance_targetting() : SpellScriptLoader("spell_sha_ancestral_guidance_targetting") { }
+    public:
+        spell_sha_ancestral_guidance_heal() : SpellScriptLoader("spell_sha_ancestral_guidance_heal") { }
 
-	class spell_sha_ancestral_guidance_targetting_SpellScript : public SpellScript
-	{
-		PrepareSpellScript(spell_sha_ancestral_guidance_targetting_SpellScript);
-
-        void TargetCorrect(std::list<WorldObject*>& targets)
+        class spell_sha_ancestral_guidance_heal_SpellScript : public SpellScript
         {
-            if (!GetCaster())
-                return;
+            PrepareSpellScript(spell_sha_ancestral_guidance_heal_SpellScript);
 
-            targets.clear();
-            std::list<Unit*> GetTargets;
+            bool Validate(SpellInfo const* /*spellEntry*/)
+            {
+                if (!sSpellMgr->GetSpellInfo(SPELL_SHA_ANCESTRAL_GUIDANCE))
+                    return false;
+                return true;
+            }
 
-            MoPCore::AnyGroupedUnitInObjectRangeCheck u_check(GetCaster(), GetCaster(), 40.0f, true);
-            MoPCore::UnitListSearcher<MoPCore::AnyGroupedUnitInObjectRangeCheck> searcher(GetCaster(), GetTargets, u_check);
-            GetCaster()->VisitNearbyObject(40.0f, searcher);
+            void RemoveInvalidTargets(std::list<WorldObject*>& targets)
+            {
+                struct 
+                {
+                    Unit* caster;
 
-            GetTargets.sort(MoPCore::HealthPctOrderPred());
-            GetTargets.resize(3);
+                    bool operator() (const WorldObject* target)
+                    {
+                        if (!caster || !target->ToUnit())
+                            return true;
 
-            for (auto itr : GetTargets)
-                targets.push_back(itr);
+                        Unit const* uTarget = target->ToUnit();
+                        if (uTarget->isTotem() || uTarget->isDead())
+                            return true;
+
+                        if (!uTarget->IsInPartyWith(caster) && !uTarget->IsInRaidWith(caster))
+                            return true;
+
+                        return false;
+                     }
+                } is_not_valid_heal_target;
+
+                is_not_valid_heal_target.caster = GetCaster();
+                targets.remove_if(is_not_valid_heal_target);
+
+                if (targets.size() > 3)
+                    targets.resize(3);
+            }
+
+            void Register()
+            {
+                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_sha_ancestral_guidance_heal_SpellScript::RemoveInvalidTargets, EFFECT_0, TARGET_UNIT_DEST_AREA_ALLY);
+            }
+        };
+
+        SpellScript* GetSpellScript() const
+        {
+            return new spell_sha_ancestral_guidance_heal_SpellScript();
         }
-
-		void Register()
-		{
-			OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_sha_ancestral_guidance_targetting_SpellScript::TargetCorrect, EFFECT_0, TARGET_UNIT_DEST_AREA_ALLY);
-		}
-	};
-
-	SpellScript* GetSpellScript() const
-	{
-		return new spell_sha_ancestral_guidance_targetting_SpellScript();
-	}
 };
 
 // Echo of the Elements - 108283
@@ -603,7 +756,7 @@ class spell_sha_echo_of_the_elements : public SpellScriptLoader
         {
             PrepareAuraScript(spell_sha_echo_of_the_elements_AuraScript);
 
-            void OnProc(constAuraEffectPtr aurEff, ProcEventInfo& eventInfo)
+            void OnProc(AuraEffect const* aurEff, ProcEventInfo& eventInfo)
             {
                 PreventDefaultAction();
 
@@ -621,16 +774,25 @@ class spell_sha_echo_of_the_elements : public SpellScriptLoader
                 if (eventInfo.GetActor()->GetGUID() != _player->GetGUID())
                     return;
 
-                SpellInfo const* procSpell = eventInfo.GetDamageInfo()->GetSpellInfo();
+                Spell const* procSpell = eventInfo.GetSpell();
+                if (!procSpell)
+                    return;
+
+                SpellInfo const* procSpellInfo = procSpell->GetSpellInfo();
                 if (!procSpell)
                     return;
 
                 bool singleTarget = false;
-                for (uint8 i = 0; i < MAX_SPELL_EFFECTS; ++i)
-                    if ((procSpell->Effects[i].TargetA.GetTarget() == TARGET_UNIT_TARGET_ALLY ||
-                        procSpell->Effects[i].TargetA.GetTarget() == TARGET_UNIT_TARGET_ENEMY) &&
-                        procSpell->Effects[i].TargetB.GetTarget() == 0)
+                for (uint8 i = 0; i < procSpellInfo->EffectCount; ++i)
+                {
+                    if ((procSpellInfo->Effects[i].TargetA.GetTarget() == TARGET_UNIT_TARGET_ALLY ||
+                        procSpellInfo->Effects[i].TargetA.GetTarget() == TARGET_UNIT_TARGET_ENEMY) &&
+                        procSpellInfo->Effects[i].TargetB.GetTarget() == 0)
+                    {    
                         singleTarget = true;
+                        break;
+                    }
+                }
 
                 if (!singleTarget)
                     return;
@@ -638,7 +800,7 @@ class spell_sha_echo_of_the_elements : public SpellScriptLoader
                 int32 chance = 6;
 
                 // devs told that proc chance is 6% for Elemental and Restoration specs and 30% for Enhancement
-                if (_player->GetSpecializationId(_player->GetActiveSpec()) == SPEC_SHAMAN_ENHANCEMENT && procSpell->Id != SPELL_SHA_ELEMENTAL_BLAST)
+                if (_player->GetSpecializationId() == SPEC_SHAMAN_ENHANCEMENT && procSpellInfo->Id != SPELL_SHA_ELEMENTAL_BLAST)
                     chance = 30;
 
                 if (!(eventInfo.GetDamageInfo()->GetDamage()) && !(eventInfo.GetHealInfo()->GetHeal()))
@@ -650,8 +812,16 @@ class spell_sha_echo_of_the_elements : public SpellScriptLoader
                 if (!roll_chance_i(chance))
                     return;
 
-                _player->AddSpellCooldown(SPELL_SHA_ECHO_OF_THE_ELEMENTS, 0, time(NULL) + 6); // This prevent from multiple procs
-                _player->CastSpell(target, procSpell->Id, true);
+                _player->AddSpellCooldown(SPELL_SHA_ECHO_OF_THE_ELEMENTS, 0, 6 * IN_MILLISECONDS); // This prevent from multiple procs
+
+                // Duplicate custom values
+                CustomSpellValues values;
+                for (unsigned int i = 0; i < 6; ++i)
+                    values.AddSpellMod(SpellValueMod(SPELLVALUE_BASE_POINT0 + i), procSpell->GetSpellValue(SpellValueMod(SPELLVALUE_BASE_POINT0 + i)));
+
+                values.AddSpellMod(SPELLVALUE_ALWAYS_CRIT, procSpell->IsCritForTarget(target));
+
+                _player->CastCustomSpell(procSpellInfo->Id, values, target, true);
             }
 
             void Register()
@@ -702,6 +872,90 @@ class spell_sha_earthgrab : public SpellScriptLoader
         }
 };
 
+// Stone Bulwark - 114889
+class spell_sha_stone_bulwark_passive : public SpellScriptLoader
+{
+public:
+    spell_sha_stone_bulwark_passive() : SpellScriptLoader("spell_sha_stone_bulwark_passive") { }
+
+    class spell_sha_stone_bulwark_AuraScript : public AuraScript
+    {
+        PrepareAuraScript(spell_sha_stone_bulwark_AuraScript);
+
+        void OnTick(AuraEffect const* aurEff)
+        {
+
+            Unit* caster = aurEff->GetCaster();
+            if (!caster || !caster->GetOwner() || !caster->GetOwner()->ToPlayer())
+                return;
+
+            bool prevent = aurEff->GetTickNumber() > 1;
+
+            Player* player = caster->GetOwner()->ToPlayer();
+            if (auto effect_0 = player->GetAuraEffect(SPELL_SHA_STONE_BULWARK_ABSORB, EFFECT_0))
+            {
+                int32 ap = (int32)player->GetTotalAttackPowerValue(BASE_ATTACK);
+                int32 sp = player->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_ALL);
+
+                int32 amount = ((ap > sp) ? int32(0.547f * ap * 1) : int32(0.875f * sp * 1));
+
+                effect_0->SetAmount(effect_0->GetAmount() + amount - 1);
+                effect_0->GetBase()->RefreshDuration();
+            }
+            else
+                prevent = false;
+
+            if (prevent) // do not prevent default action if it is first tick, or SPELL_SHA_STONE_BULWARK_ABSORB is removed
+                PreventDefaultAction(); 
+        }
+
+        void Register()
+        {
+            OnEffectPeriodic += AuraEffectPeriodicFn(spell_sha_stone_bulwark_AuraScript::OnTick, EFFECT_0, SPELL_AURA_PERIODIC_TRIGGER_SPELL);
+        }
+    };
+
+    AuraScript* GetAuraScript() const
+    {
+        return new spell_sha_stone_bulwark_AuraScript();
+    }
+};
+
+// 138136 - Item - Shaman T15 Enhancement 2P Bonus
+class spell_sha_stormstrike : public SpellScriptLoader
+{
+    public:
+        spell_sha_stormstrike() : SpellScriptLoader("spell_sha_stormstrike") { }
+
+        class spell_sha_stormstrike_SpellScript : public SpellScript
+        {
+            PrepareSpellScript(spell_sha_stormstrike_SpellScript);
+
+            void HandleOnHit()
+            {
+                if (Player* _player = GetCaster()->ToPlayer())
+                {
+                    if (_player->HasAura(SPELL_SHA_T15_ENCH_SET_2P_BONUS))
+                    {
+                        _player->CastSpell(_player, 53817, true);
+                        _player->CastSpell(_player, 53817, true);
+                    }
+                }
+            }
+
+            void Register()
+            {
+                OnHit += SpellHitFn(spell_sha_stormstrike_SpellScript::HandleOnHit);
+            }
+        };
+
+        SpellScript* GetSpellScript() const
+        {
+            return new spell_sha_stormstrike_SpellScript();
+        }
+};
+
+
 // Stone Bulwark - 114893
 class spell_sha_stone_bulwark : public SpellScriptLoader
 {
@@ -712,27 +966,20 @@ class spell_sha_stone_bulwark : public SpellScriptLoader
         {
             PrepareAuraScript(spell_sha_stone_bulwark_AuraScript);
 
-            void CalculateAmount(constAuraEffectPtr , int32 & amount, bool & )
+            bool CalculateAmount(AuraEffect const* aurEff , int32 & amount, bool & )
             {
-                if (Unit* caster = GetCaster())
-                {
-                    if (Unit* owner = caster->GetOwner())
-                    {
-                        if (owner->ToPlayer() && !owner->HasAura(SPELL_SHA_STONE_BULWARK_ABSORB))
-                        {
-                            int32 AP = owner->GetTotalAttackPowerValue(BASE_ATTACK);
-                            int32 spellPower = owner->ToPlayer()->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_ALL);
-                            amount += (AP > spellPower) ? int32(1.641f * AP) : int32(2.625f * spellPower);
-                        }
-                        else if (owner->ToPlayer() && owner->HasAura(SPELL_SHA_STONE_BULWARK_ABSORB))
-                        {
-                            int32 AP = owner->GetTotalAttackPowerValue(BASE_ATTACK);
-                            int32 spellPower = owner->ToPlayer()->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_ALL);
-                            amount += (AP > spellPower) ? int32(0.547f * AP) : int32(0.875f * spellPower);
-                            amount += owner->GetAura(SPELL_SHA_STONE_BULWARK_ABSORB)->GetEffect(0)->GetAmount();
-                        }
-                    }
-                }
+                Unit* caster = GetCaster();
+                if (!caster || !caster->GetOwner() || !caster->GetOwner()->ToPlayer())
+                    return false;
+
+                Player* player = caster->GetOwner()->ToPlayer();
+                
+                int32 ap = (int32)player->GetTotalAttackPowerValue(BASE_ATTACK);
+                int32 sp = player->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_ALL);
+
+                amount = (ap > sp) ? int32(0.547f * ap * 4) : int32(0.875f * sp * 4);
+
+                return true;
             }
 
             void Register()
@@ -757,7 +1004,7 @@ class spell_sha_mail_specialization : public SpellScriptLoader
         {
             PrepareAuraScript(spell_sha_mail_specialization_AuraScript);
 
-            void OnApply(constAuraEffectPtr /*aurEff*/, AuraEffectHandleModes /*mode*/)
+            void OnApply(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
             {
                 if (!GetCaster())
                     return;
@@ -772,7 +1019,7 @@ class spell_sha_mail_specialization : public SpellScriptLoader
                 }
             }
 
-            void OnRemove(constAuraEffectPtr /*aurEff*/, AuraEffectHandleModes /*mode*/)
+            void OnRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
             {
                 if (!GetCaster())
                     return;
@@ -1010,8 +1257,8 @@ class spell_sha_fire_nova : public SpellScriptLoader
             SpellCastResult HandleCheckCast()
             {
                 UnitList targets;
-                MoPCore::AnyUnitHavingBuffInObjectRangeCheck u_check(GetCaster(), GetCaster(), 100, SPELL_SHA_FLAME_SHOCK, false);
-                MoPCore::UnitListSearcher<MoPCore::AnyUnitHavingBuffInObjectRangeCheck> searcher(GetCaster(), targets, u_check);
+                JadeCore::AnyUnitHavingBuffInObjectRangeCheck u_check(GetCaster(), GetCaster(), 100, SPELL_SHA_FLAME_SHOCK, false);
+                JadeCore::UnitListSearcher<JadeCore::AnyUnitHavingBuffInObjectRangeCheck> searcher(GetCaster(), targets, u_check);
                 GetCaster()->VisitNearbyObject(100, searcher);
                 
                 return targets.size() == 0 ? SPELL_FAILED_CANT_DO_THAT_RIGHT_NOW : SPELL_CAST_OK;
@@ -1040,46 +1287,50 @@ class spell_sha_unleash_elements : public SpellScriptLoader
         {
             PrepareSpellScript(spell_sha_unleash_elements_SpellScript);
 
-            SpellCastResult CheckCast()
+            SpellCastResult HandleCheckCast()
             {
-                Player* caster = GetCaster()->ToPlayer();
-                if (!caster)
-                    return SPELL_CAST_OK;
+                 Unit* caster = GetCaster();
+                 if (!caster)
+                     return SPELL_FAILED_DONT_REPORT;
 
-                if (Unit* target = GetExplTargetUnit())
-                {
-                    bool isFriendly = caster->IsFriendlyTo(target);
-                    bool anyEnchant = false;
-                    Item *weapons[2];
-                    weapons[0] = caster->GetItemByPos(INVENTORY_SLOT_BAG_0, EQUIPMENT_SLOT_MAINHAND);
-                    weapons[1] = caster->GetItemByPos(INVENTORY_SLOT_BAG_0, EQUIPMENT_SLOT_OFFHAND);
-                    for (int i = 0; i < 2; i++)
-                    {
-                        if (!weapons[i])
-                            continue;
+                 Player* plr = caster->ToPlayer();
+                 if (!plr)
+                     return SPELL_FAILED_DONT_REPORT;
 
-                        switch (weapons[i]->GetEnchantmentId(TEMP_ENCHANTMENT_SLOT))
-                        {
-                            case 3345:
-                                anyEnchant = true;
-                                break;
-                            case 5: // Flametongue Weapon
-                            case 2: // Frostbrand Weapon
-                            case 3021: // Rockbiter Weapon
-                            case 283: // Windfury Weapon
-                                if (isFriendly)
-                                    return SPELL_FAILED_BAD_TARGETS;
-                                anyEnchant = true;
-                                break;
-                        }
-                    }
-                    if (!anyEnchant)
-                    {
-                        SetCustomCastResultMessage(SPELL_CUSTOM_ERROR_NO_ACTIVE_ENCHANTMENT);
-                        return SPELL_FAILED_CUSTOM_ERROR;
-                    }
-                }
-                return SPELL_CAST_OK;
+                 if (!GetExplTargetUnit())
+                     return SPELL_FAILED_BAD_TARGETS;
+
+                 Item* weapons[2];
+                 weapons[0] = plr->GetItemByPos(INVENTORY_SLOT_BAG_0, EQUIPMENT_SLOT_MAINHAND);
+                 weapons[1] = plr->GetItemByPos(INVENTORY_SLOT_BAG_0, EQUIPMENT_SLOT_OFFHAND);
+                 bool found_enchantment = false;
+
+                 for (int i = 0; i < 2; i++)
+                 {
+                     if (!weapons[i])
+                          continue;
+
+                     int32 enchant = weapons[i]->GetEnchantmentId(TEMP_ENCHANTMENT_SLOT);
+ 
+                     if (enchant == 0)
+                         continue;
+
+                     found_enchantment = true;
+
+                     switch (enchant)
+                     {
+                         case 5: // Flametongue Weapon
+                         case 2: // Frostbrand Weapon
+                         case 3021: // Rockbiter Weapon
+                         case 283: // Windfury Weapon
+                         {
+                             if (!plr->IsValidAttackTarget(GetExplTargetUnit()))
+                                 return SPELL_FAILED_BAD_TARGETS;
+                             break;
+                         }
+                     }
+                 }
+                 return found_enchantment == false ? SPELL_FAILED_CANT_DO_THAT_RIGHT_NOW : SPELL_CAST_OK;
             }
 
             void HandleOnHit()
@@ -1162,12 +1413,16 @@ class spell_sha_unleash_elements : public SpellScriptLoader
                             if (i == 0 && weapons[0] && weapons[1])
                                 if (weapons[0]->GetEnchantmentId(TEMP_ENCHANTMENT_SLOT) == weapons[1]->GetEnchantmentId(TEMP_ENCHANTMENT_SLOT))
                                     return;
-                   }
+                        }
+                        
+                        // Item - Shaman T16 Enhancement 2P Bonus
+                        if (caster->HasAura(144962))
+                            caster->AddAura(144964, caster);
             }
 
             void Register()
             {
-                OnCheckCast += SpellCheckCastFn(spell_sha_unleash_elements_SpellScript::CheckCast);
+                OnCheckCast += SpellCheckCastFn(spell_sha_unleash_elements_SpellScript::HandleCheckCast);
                 OnHit += SpellHitFn(spell_sha_unleash_elements_SpellScript::HandleOnHit);
             }
         };
@@ -1205,7 +1460,7 @@ class spell_sha_rolling_thunder : public SpellScriptLoader
 
                         if (roll_chance_i(60) && _player->HasAura(SPELL_SHA_ROLLING_THUNDER_AURA))
                         {
-                            if (AuraPtr lightningShield = _player->GetAura(SPELL_SHA_LIGHTNING_SHIELD_AURA))
+                            if (Aura* lightningShield = _player->GetAura(SPELL_SHA_LIGHTNING_SHIELD_AURA))
                             {
                                 _player->CastSpell(_player, SPELL_SHA_ROLLING_THUNDER_ENERGIZE, true);
 
@@ -1265,11 +1520,11 @@ class spell_sha_fulmination : public SpellScriptLoader
                         if (!GetHitDamage())
                             return;
 
-                        AuraEffectPtr fulminationAura = _player->GetDummyAuraEffect(SPELLFAMILY_SHAMAN, 2010, 0);
+                        AuraEffect* fulminationAura = _player->GetDummyAuraEffect(SPELLFAMILY_SHAMAN, 2010, 0);
                         if (!fulminationAura)
                             return;
 
-                        AuraPtr lightningShield = _player->GetAura(SPELL_SHA_LIGHTNING_SHIELD_AURA);
+                        Aura* lightningShield = _player->GetAura(SPELL_SHA_LIGHTNING_SHIELD_AURA);
                         if (!lightningShield)
                             return;
 
@@ -1278,8 +1533,6 @@ class spell_sha_fulmination : public SpellScriptLoader
                             return;
 
                         uint8 usedCharges = lsCharges - 1;
-                        if (_player->HasAura(144998))
-                            _player->CastCustomSpell(144999, SPELLVALUE_BASE_POINT0, usedCharges * 4, target, true);
 
                         SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(SPELL_SHA_LIGHTNING_SHIELD_ORB_DAMAGE);
                         if (!spellInfo)
@@ -1289,6 +1542,18 @@ class spell_sha_fulmination : public SpellScriptLoader
 
                         _player->CastCustomSpell(SPELL_SHA_FULMINATION_TRIGGERED, SPELLVALUE_BASE_POINT0, damage, target, true, NULL, fulminationAura);
                         lightningShield->SetCharges(lsCharges - usedCharges);
+
+                        // Item - Shaman T16 Elemental 2P Bonus
+                        if (_player->HasAura(SHAMAN_ITEM_T16_ELEMENTAL_2P_BONUS))
+                        {
+                            _player->AddAura(SPELL_SHA_ELEMENTAL_DISCHARGE, target);
+
+                            if (Aura* elementalDischarge = target->GetAura(SPELL_SHA_ELEMENTAL_DISCHARGE, _player->GetGUID()))
+                            {
+                                elementalDischarge->SetMaxDuration(2000 * usedCharges);
+                                elementalDischarge->SetDuration(2000 * usedCharges);
+                            }
+                        }
 
                         _player->RemoveAura(SPELL_SHA_FULMINATION_INFO);
                     }
@@ -1331,40 +1596,41 @@ class spell_sha_healing_stream : public SpellScriptLoader
 
                 if (Player* _player = GetCaster()->GetOwner()->ToPlayer())
                     if (Unit* target = GetHitUnit())
-                        if (target->GetGUID() != _player->GetGUID() && _player->HasAura(SPELL_SHA_GLYPH_OF_HEALING_STREAM_TOTEM)) // Glyph of HST.
+                        // Glyph of Healing Stream Totem
+                        if (_player->HasAura(SPELL_SHA_GLYPH_OF_HEALING_STREAM_TOTEM))
                             _player->CastSpell(target, SPELL_SHA_GLYPH_OF_HEALING_STREAM, true);
             }
+            
+			void TargetCorrect(std::list<WorldObject*>& targets)
+			{
+				if (!GetCaster())
+					return;
 
-            void TargetCorrect(std::list<WorldObject*>& targets)
-            {
-                if (!GetCaster())
-                    return;
+				targets.clear();
+				std::list<Unit*> GetTargets;
 
-                targets.clear();
-                std::list<Unit*> GetTargets;
+				JadeCore::AnyGroupedUnitInObjectRangeCheck u_check(GetCaster(), GetCaster(), 40.0f, true);
+				JadeCore::UnitListSearcher<JadeCore::AnyGroupedUnitInObjectRangeCheck> searcher(GetCaster(), GetTargets, u_check);
+				GetCaster()->VisitNearbyObject(40.0f, searcher);
 
-                MoPCore::AnyGroupedUnitInObjectRangeCheck u_check(GetCaster(), GetCaster(), 40.0f, true);
-                MoPCore::UnitListSearcher<MoPCore::AnyGroupedUnitInObjectRangeCheck> searcher(GetCaster(), GetTargets, u_check);
-                GetCaster()->VisitNearbyObject(40.0f, searcher);
+				GetTargets.sort(JadeCore::HealthPctOrderPred());
+				int targetsize = 1;
+				if (GetCaster()->HasAura(138303))
+					targetsize = 2;
+				if (GetCaster()->HasAura(147074))
+					targetsize++;
 
-                GetTargets.sort(MoPCore::HealthPctOrderPred());
-                int targetsize = 1;
-                if (GetCaster()->HasAura(138303))
-                    targetsize = 2;
-                if (GetCaster()->HasAura(147074))
-                    targetsize++;
+				if (targets.size() > 1)
+					GetTargets.resize(targetsize);
 
-                if (targets.size() > 1)
-                    GetTargets.resize(targetsize);
-
-                for (auto itr : GetTargets)
-                    targets.push_back(itr);
-            }
+				for (auto itr : GetTargets)
+					targets.push_back(itr);
+			}
 
             void Register()
             {
                 OnHit += SpellHitFn(spell_sha_healing_stream_SpellScript::HandleOnHit);
-                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_sha_healing_stream_SpellScript::TargetCorrect, EFFECT_0, TARGET_UNIT_DEST_AREA_ALLY);
+				OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_sha_healing_stream_SpellScript::TargetCorrect, EFFECT_0, TARGET_UNIT_DEST_AREA_ALLY);
             }
         };
 
@@ -1447,6 +1713,29 @@ class spell_sha_elemental_blast : public SpellScriptLoader
             {
                 if (Player* _player = GetCaster()->ToPlayer())
                 {
+                    _player->CastSpell(_player, SPELL_SHA_ELEMENTAL_BLAST_RATING_BONUS, true);
+
+                    if (Aura* const aura = _player->GetAura(SPELL_SHA_ELEMENTAL_BLAST_RATING_BONUS, _player->GetGUID()))
+                    {
+                        uint32 randomEffect = 0;
+
+                        if (_player->GetSpecializationId(_player->GetActiveSpec()) == SPEC_SHAMAN_ENHANCEMENT)
+                            randomEffect = urand(0, 3);
+                        else
+                            randomEffect = urand(0, 2);
+
+                        // Iterate over all aura effects
+                        for (int i = 0; i < 4; ++i)
+                        {
+                            if (i == randomEffect)
+                                aura->GetEffect(i)->ChangeAmount(3500);
+                            else
+                            {
+                                aura->GetEffect(i)->ChangeAmount(0);
+                            }
+                        }
+                    }
+
                     if (Unit* target = GetExplTargetUnit())
                     {
                         _player->CastSpell(target, SPELL_SHA_ELEMENTAL_BLAST_FROST_VISUAL, true);
@@ -1455,53 +1744,9 @@ class spell_sha_elemental_blast : public SpellScriptLoader
                 }
             }
 
-            void HandleOnHit()
-            {
-                if (Player* _player = GetCaster()->ToPlayer())
-                {
-                    int32 randomEffect = irand(0, 2);
-
-                    _player->CastSpell(_player, SPELL_SHA_ELEMENTAL_BLAST_RATING_BONUS, true);
-
-                    AuraApplication* aura = _player->GetAuraApplication(SPELL_SHA_ELEMENTAL_BLAST_RATING_BONUS, _player->GetGUID());
-
-                    if (aura)
-                    {
-                        switch (randomEffect)
-                        {
-                            case 0:
-                            {
-                                aura->GetBase()->GetEffect(1)->ChangeAmount(0);
-                                aura->GetBase()->GetEffect(2)->ChangeAmount(0);
-                                break;
-                            }
-                            case 1:
-                            {
-                                aura->GetBase()->GetEffect(0)->ChangeAmount(0);
-                                aura->GetBase()->GetEffect(2)->ChangeAmount(0);
-                                break;
-                            }
-                            case 2:
-                            {
-                                aura->GetBase()->GetEffect(0)->ChangeAmount(0);
-                                aura->GetBase()->GetEffect(1)->ChangeAmount(0);
-                                break;
-                            }
-                            default:
-                                break;
-                        }
-                    }
-
-                    // Unleash Flame increase Elemental Blast damage for 30%
-                    if (_player->HasAura(73683))
-                        SetHitDamage(int32(GetHitDamage() * 1.3f));
-                }
-            }
-
             void Register()
             {
                 AfterCast += SpellCastFn(spell_sha_elemental_blast_SpellScript::HandleAfterCast);
-                OnHit += SpellHitFn(spell_sha_elemental_blast_SpellScript::HandleOnHit);
             }
         };
 
@@ -1559,7 +1804,7 @@ class spell_sha_earthquake : public SpellScriptLoader
         {
             PrepareAuraScript(spell_sha_earthquake_AuraScript);
 
-            void OnTick(constAuraEffectPtr aurEff)
+            void OnTick(AuraEffect const* aurEff)
             {
                 if (!GetCaster())
                     return;
@@ -1604,7 +1849,7 @@ class spell_sha_healing_rain : public SpellScriptLoader
                         caster->CastSpell(loc->GetPositionX(), loc->GetPositionY(), loc->GetPositionZ(), SPELL_SHA_HEALING_RAIN, true);
 
                         // Reset amount of Conductivity
-                        if (AuraPtr conductivity = caster->GetAura(SPELL_SHA_CONDUCTIVITY_TALENT))
+                        if (Aura* conductivity = caster->GetAura(SPELL_SHA_CONDUCTIVITY_TALENT))
                             conductivity->GetEffect(2)->SetAmount(40000);
                     }
                 }
@@ -1625,7 +1870,7 @@ class spell_sha_healing_rain : public SpellScriptLoader
         {
             PrepareAuraScript(spell_sha_healing_rain_AuraScript);
 
-            void OnTick(constAuraEffectPtr aurEff)
+            void OnTick(AuraEffect const* aurEff)
             {
                 if (!GetCaster())
                     return;
@@ -1643,6 +1888,46 @@ class spell_sha_healing_rain : public SpellScriptLoader
         AuraScript* GetAuraScript() const
         {
             return new spell_sha_healing_rain_AuraScript();
+        }
+};
+
+// healing rain heal effect 73921
+class spell_sha_healing_rain_heal : public SpellScriptLoader
+{
+    public:
+        spell_sha_healing_rain_heal() : SpellScriptLoader("spell_sha_healing_rain_heal") { }
+
+        class spell_sha_healing_rain_heal_SpellScript : public SpellScript
+        {
+            PrepareSpellScript(spell_sha_healing_rain_heal_SpellScript);
+
+            void RemoveInvalidTargets(std::list<WorldObject*>& targets)
+            {
+                if (targets.empty())
+                    return;
+
+                // remove non-player target (pet, creatures and etc.)
+                targets.remove_if([this](WorldObject* target) -> bool
+                {
+                    if (!target || !target->ToPlayer())
+                        return true;
+                    return false;
+                });
+
+                targets.sort(JadeCore::HealthPctOrderPred());
+                if (targets.size() > 6)
+                    targets.resize(6);
+            }
+
+            void Register()
+            {
+                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_sha_healing_rain_heal_SpellScript::RemoveInvalidTargets, EFFECT_0, TARGET_UNIT_DEST_AREA_ALLY);
+            }
+        };
+
+        SpellScript* GetSpellScript() const
+        {
+            return new spell_sha_healing_rain_heal_SpellScript();
         }
 };
 
@@ -1755,22 +2040,33 @@ class spell_sha_bloodlust : public SpellScriptLoader
 
             void RemoveInvalidTargets(std::list<WorldObject*>& targets)
             {
-                targets.remove_if(MoPCore::UnitAuraCheck(true, SHAMAN_SPELL_SATED));
-                targets.remove_if(MoPCore::UnitAuraCheck(true, HUNTER_SPELL_INSANITY));
-                targets.remove_if(MoPCore::UnitAuraCheck(true, MAGE_SPELL_TEMPORAL_DISPLACEMENT));
+                targets.remove_if(JadeCore::UnitAuraCheck(true, SHAMAN_SPELL_SATED));
+                targets.remove_if(JadeCore::UnitAuraCheck(true, HUNTER_SPELL_INSANITY));
+                targets.remove_if(JadeCore::UnitAuraCheck(true, MAGE_SPELL_TEMPORAL_DISPLACEMENT));
+                targets.remove_if(JadeCore::UnitAuraCheck(true, SHAMAN_SPELL_EXHAUSTION));
             }
 
             void ApplyDebuff()
             {
                 if (Unit* target = GetHitUnit())
+                {
+                    /// We must add a check here too, players can use a bug allowing them to receive twice a buff like this one
+                    /// If they cast the spells exactly at the same time
+                    if (target->HasAura(SHAMAN_SPELL_EXHAUSTION) || target->HasAura(HUNTER_SPELL_INSANITY) ||
+                        target->HasAura(MAGE_SPELL_TEMPORAL_DISPLACEMENT) || target->HasAura(SHAMAN_SPELL_SATED))
+                    {
+                        target->RemoveAura(GetSpellInfo()->Id);
+                        return;
+                    }
+
                     target->CastSpell(target, SHAMAN_SPELL_SATED, true);
+                }
             }
 
             void Register()
             {
                 OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_sha_bloodlust_SpellScript::RemoveInvalidTargets, EFFECT_0, TARGET_UNIT_CASTER_AREA_RAID);
                 OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_sha_bloodlust_SpellScript::RemoveInvalidTargets, EFFECT_1, TARGET_UNIT_CASTER_AREA_RAID);
-                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_sha_bloodlust_SpellScript::RemoveInvalidTargets, EFFECT_2, TARGET_UNIT_CASTER_AREA_RAID);
                 AfterHit += SpellHitFn(spell_sha_bloodlust_SpellScript::ApplyDebuff);
             }
         };
@@ -1799,22 +2095,33 @@ class spell_sha_heroism : public SpellScriptLoader
 
             void RemoveInvalidTargets(std::list<WorldObject*>& targets)
             {
-                targets.remove_if(MoPCore::UnitAuraCheck(true, SHAMAN_SPELL_EXHAUSTION));
-                targets.remove_if(MoPCore::UnitAuraCheck(true, HUNTER_SPELL_INSANITY));
-                targets.remove_if(MoPCore::UnitAuraCheck(true, MAGE_SPELL_TEMPORAL_DISPLACEMENT));
+                targets.remove_if(JadeCore::UnitAuraCheck(true, SHAMAN_SPELL_EXHAUSTION));
+                targets.remove_if(JadeCore::UnitAuraCheck(true, HUNTER_SPELL_INSANITY));
+                targets.remove_if(JadeCore::UnitAuraCheck(true, MAGE_SPELL_TEMPORAL_DISPLACEMENT));
+                targets.remove_if(JadeCore::UnitAuraCheck(true, SHAMAN_SPELL_SATED));
             }
 
             void ApplyDebuff()
             {
                 if (Unit* target = GetHitUnit())
-                    GetCaster()->CastSpell(target, SHAMAN_SPELL_EXHAUSTION, true);
+                {
+                    /// We must add a check here too, players can use a bug allowing them to receive twice a buff like this one
+                    /// If they cast the spells exactly at the same time
+                    if (target->HasAura(SHAMAN_SPELL_EXHAUSTION) || target->HasAura(HUNTER_SPELL_INSANITY) ||
+                        target->HasAura(MAGE_SPELL_TEMPORAL_DISPLACEMENT) || target->HasAura(SHAMAN_SPELL_SATED))
+                    {
+                        target->RemoveAura(GetSpellInfo()->Id);
+                        return;
+                    }
+
+                    target->CastSpell(target, SHAMAN_SPELL_EXHAUSTION, true);
+                }
             }
 
             void Register()
             {
                 OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_sha_heroism_SpellScript::RemoveInvalidTargets, EFFECT_0, TARGET_UNIT_CASTER_AREA_RAID);
                 OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_sha_heroism_SpellScript::RemoveInvalidTargets, EFFECT_1, TARGET_UNIT_CASTER_AREA_RAID);
-                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_sha_heroism_SpellScript::RemoveInvalidTargets, EFFECT_2, TARGET_UNIT_CASTER_AREA_RAID);
                 AfterHit += SpellHitFn(spell_sha_heroism_SpellScript::ApplyDebuff);
             }
         };
@@ -1849,8 +2156,16 @@ class spell_sha_ancestral_awakening_proc : public SpellScriptLoader
             void HandleDummy(SpellEffIndex /* effIndex */)
             {
                 int32 damage = GetEffectValue();
-                if (GetCaster() && GetHitUnit())
-                    GetCaster()->CastCustomSpell(GetHitUnit(), SPELL_ANCESTRAL_AWAKENING_PROC, &damage, NULL, NULL, true);
+                if (Unit* l_Caster = GetCaster())
+                {
+                    /// According to Wowpedia, Purification is applied twice:
+                    /// http://wow.gamepedia.com/Ancestral_Awakening
+                    if (AuraEffect* l_PurificationEffect = l_Caster->GetAuraEffect(16213, EFFECT_0))
+                        AddPct(damage, l_PurificationEffect->GetAmount());
+
+                    if (Unit* l_Target = GetHitUnit())
+                        l_Caster->CastCustomSpell(l_Target, SPELL_ANCESTRAL_AWAKENING_PROC, &damage, nullptr, nullptr, true);
+                }
             }
 
             void Register()
@@ -1897,14 +2212,14 @@ class spell_sha_lava_lash : public SpellScriptLoader
                                 AddPct(hitDamage, 40);
 
                             // Damage is increased by 23%(custom)/40% if your off-hand weapon is enchanted with Flametongue.
-                            if (_player->GetAuraEffect(SPELL_AURA_DUMMY, SPELLFAMILY_SHAMAN, 0x200000, 0, 0) && _player->HasAura(77661))
-                                AddPct(hitDamage, 21);
-                            else if (_player->GetAuraEffect(SPELL_AURA_DUMMY, SPELLFAMILY_SHAMAN, 0x200000, 0, 0) && !_player->HasAura(77661))
-                                AddPct(hitDamage, 40);
+                            //if (_player->GetAuraEffect(SPELL_AURA_DUMMY, SPELLFAMILY_SHAMAN, 0x200000, 0, 0) && _player->HasAura(77661))
+                                //AddPct(hitDamage, 21);
+                            //else if (_player->GetAuraEffect(SPELL_AURA_DUMMY, SPELLFAMILY_SHAMAN, 0x200000, 0, 0) && !_player->HasAura(77661))
+                                //AddPct(hitDamage, 40);
 
                             // Unleash Flame increase Lava Lash damage for 30%
-                            if (_player->HasAura(73683))
-                                AddPct(hitDamage, 30);
+                            //if (_player->HasAura(73683))
+                                //AddPct(hitDamage, 30);
 
                             // Your Lava Lash ability will consume Searing Flame effect, dealing 20% increased damage for each application
                             if (AuraApplication* searingFlame = _player->GetAuraApplication(SPELL_SHA_SEARING_FLAMES_DAMAGE_DONE))
@@ -1922,7 +2237,7 @@ class spell_sha_lava_lash : public SpellScriptLoader
                             // Effect desactivated if has Glyph of Lava Lash
                             if (!_player->HasAura(55444))
                             {
-                                if (AuraPtr flameShock = target->GetAura(SPELL_SHA_FLAME_SHOCK, _player->GetGUID()))
+                                if (Aura* flameShock = target->GetAura(SPELL_SHA_FLAME_SHOCK, _player->GetGUID()))
                                 {
                                     std::list<Unit*> targetList;
 
@@ -1948,7 +2263,7 @@ class spell_sha_lava_lash : public SpellScriptLoader
 
                                         // We should add flame shock with the same duration, as it on the original target
                                         _player->AddAura(SPELL_SHA_FLAME_SHOCK, itr);
-                                        if (AuraPtr flameShockNew = itr->GetAura(SPELL_SHA_FLAME_SHOCK, _player->GetGUID()))
+                                        if (Aura* flameShockNew = itr->GetAura(SPELL_SHA_FLAME_SHOCK, _player->GetGUID()))
                                             flameShockNew->SetDuration(flameShockDuration);
 
                                         hitTargets++;
@@ -1987,8 +2302,6 @@ class spell_sha_chain_heal : public SpellScriptLoader
             {
                 firstHeal = true;
                 riptide = false;
-				amount = 0;
-
                 return true;
             }
 
@@ -1997,24 +2310,23 @@ class spell_sha_chain_heal : public SpellScriptLoader
                 if (!GetCaster() || !GetHitUnit())
                     return;
 
-				// Check the First Hit
                 if (firstHeal)
                 {
                     // Check if the target has Riptide
-                    if (AuraEffectPtr aurEff = GetHitUnit()->GetAuraEffect(SPELL_AURA_PERIODIC_HEAL, SPELLFAMILY_SHAMAN, 0, 0, 0x10, GetCaster()->GetGUID()))
+                    if (AuraEffect* aurEff = GetHitUnit()->GetAuraEffect(SPELL_AURA_PERIODIC_HEAL, SPELLFAMILY_SHAMAN, 0, 0, 0x10, GetCaster()->GetGUID()))
                     {
-						riptide = true;
-						amount = aurEff->GetSpellInfo()->Effects[EFFECT_2].CalcValue();
+                        riptide = true;
+
+                        // Consume it
+                        // if caster has no Item - Shaman T12 Restoration 4P Bonus
+                        if (!GetCaster()->HasAura(99195))
+                            GetHitUnit()->RemoveAura(aurEff->GetBase());
                     }
                     firstHeal = false;
                 }
-
                 // Riptide increases the Chain Heal effect by 25%
-				if (riptide)
-				{
-					uint32 bonus = CalculatePct(GetHitHeal(), amount);
-					SetHitHeal(GetHitHeal() + bonus);
-				}
+                if (riptide)
+                    SetHitHeal(GetHitHeal() * 1.25f);
             }
 
             void Register()
@@ -2024,8 +2336,6 @@ class spell_sha_chain_heal : public SpellScriptLoader
 
             bool firstHeal;
             bool riptide;
-			uint32 amount;
-
         };
 
         SpellScript* GetSpellScript() const
@@ -2073,11 +2383,11 @@ class spell_sha_glyph_of_telluric_currents : public SpellScriptLoader
         {
             PrepareAuraScript(spell_sha_glyph_of_telluric_currents_AuraScript);
 
-            void OnProc(constAuraEffectPtr aurEff, ProcEventInfo& eventInfo)
+            void OnProc(AuraEffect const* aurEff, ProcEventInfo& eventInfo)
             {
                 PreventDefaultAction();
 
-                if (!GetCaster() || !eventInfo.GetDamageInfo()->getVictim())
+                if (!GetCaster() || !eventInfo.GetDamageInfo()->GetVictim())
                     return;
 
                 if ((eventInfo.GetDamageInfo()->GetSpellInfo() && eventInfo.GetDamageInfo()->GetSpellInfo()->Id != 403) || 
@@ -2106,136 +2416,288 @@ class spell_sha_glyph_of_telluric_currents : public SpellScriptLoader
         }
 };
 
-//138136	Item - Shaman T15 Enhancement 2P Bonus
-class spell_sha_stormstrike : public SpellScriptLoader
-{
-public:
-    spell_sha_stormstrike() : SpellScriptLoader("spell_sha_stormstrike") { }
-
-    class spell_sha_stormstrike_SpellScript : public SpellScript
-    {
-        PrepareSpellScript(spell_sha_stormstrike_SpellScript);
-
-        void HandleOnHit()
-        {
-            if (Player* _player = GetCaster()->ToPlayer())
-            {
-                if (_player->HasAura(138136))
-                {
-                    _player->CastSpell(_player, 53817, true);
-                    _player->CastSpell(_player, 53817, true);
-                }
-            }
-        }
-
-        void Register()
-        {
-            OnHit += SpellHitFn(spell_sha_stormstrike_SpellScript::HandleOnHit);
-        }
-    };
-
-    SpellScript* GetSpellScript() const
-    {
-        return new spell_sha_stormstrike_SpellScript();
-    }
-};
-
 // Lava Burst - 51505
 class spell_sha_lava_burst : public SpellScriptLoader
 {
-    class spell_sha_lava_burst_SpellScript : public SpellScript
-    {
-        PrepareSpellScript(spell_sha_lava_burst_SpellScript)
+    public:
+        spell_sha_lava_burst() : SpellScriptLoader("spell_sha_lava_burst") { }
 
-        enum
+        class spell_sha_lava_burst_SpellScript : public SpellScript
         {
-            SPELL_FLAME_SHOCK       = 8050,
-            SPELL_LAVA_SURGE_PROC   = 77762,
-        };
+            PrepareSpellScript(spell_sha_lava_burst_SpellScript)
 
-
-        void HandleAfterHit()
-        {
-            if (Player* _player = GetCaster()->ToPlayer())
+			void HandleAfterHit()
+			{
+				if (Player* _player = GetCaster()->ToPlayer())
+				{
+					if (_player->HasAura(SPELL_SHA_T15_ELEM_SET_4P_BONUS))
+					{
+						_player->ReduceSpellCooldown(114049, 1000);
+						_player->ReduceSpellCooldown(114050, 1000);
+						_player->ReduceSpellCooldown(114051, 1000);
+						_player->ReduceSpellCooldown(114052, 1000);
+					}
+				}
+			}
+                    
+            void HandleAfterCast()
             {
-                if (_player->HasAura(138144))
+                if (!GetCaster())
+                    return;
+
+                if (Player* _caster = GetCaster()->ToPlayer())
                 {
-                    _player->ReduceSpellCooldown(114049, 1000);
-                    _player->ReduceSpellCooldown(114050, 1000);
-                    _player->ReduceSpellCooldown(114051, 1000);
-                    _player->ReduceSpellCooldown(114052, 1000);
+                    if (_caster->HasAura(SPELL_SHA_LAVA_SURGE))
+                    {
+                        if (_caster->HasSpellCooldown(SPELL_SHA_LAVA_BURST))
+                            _caster->RemoveSpellCooldown(SPELL_SHA_LAVA_BURST, true);
+                    }
                 }
             }
-        }
 
-        void HandleOnHit(SpellEffIndex /*effIndex*/)
+            void HandleOnHit(SpellEffIndex /*effIndex*/)
+            {
+                Unit* target = GetHitUnit();
+                if (!target || !target->HasAura(SPELL_SHA_FLAME_SHOCK, GetCaster()->GetGUID()))
+                    return;
+
+                SetHitDamage(GetHitDamage() * 1.5f); // If Flame Shock is on the target, Lava Burst will deal 50% additional damage
+            }
+            
+            void Register()
+            {
+                OnEffectHitTarget += SpellEffectFn(spell_sha_lava_burst_SpellScript::HandleOnHit, EFFECT_0, SPELL_EFFECT_SCHOOL_DAMAGE);
+                AfterHit += SpellHitFn(spell_sha_lava_burst_SpellScript::HandleAfterHit);
+                AfterCast += SpellCastFn(spell_sha_lava_burst_SpellScript::HandleAfterCast);
+            }
+        };
+
+        SpellScript* GetSpellScript() const
         {
-            Unit* target = GetHitUnit();
-            if (!target || !target->HasAura(SPELL_FLAME_SHOCK, GetCaster()->GetGUID()))
-                return;
-
-            SetHitDamage(GetHitDamage() * 1.5f);
+            return new spell_sha_lava_burst_SpellScript();
         }
-
-        void Register()
-        {
-            OnEffectHitTarget += SpellEffectFn(spell_sha_lava_burst_SpellScript::HandleOnHit, EFFECT_0, SPELL_EFFECT_SCHOOL_DAMAGE);
-            AfterHit += SpellHitFn(spell_sha_lava_burst_SpellScript::HandleAfterHit);
-
-        }
-    };
-
-public:
-    spell_sha_lava_burst() : SpellScriptLoader("spell_sha_lava_burst")
-    { }
-
-    SpellScript * GetSpellScript() const
-    {
-        return new spell_sha_lava_burst_SpellScript();
-    }
 };
 
-//138146	Lightning Strike
-class spell_sha_lightning_strike : public SpellScriptLoader
+// Triggered by Flame Shock - 8050
+// Lava Surge - 77756
+class spell_sha_lava_surge : public SpellScriptLoader
 {
 public:
-    spell_sha_lightning_strike() : SpellScriptLoader("spell_sha_lightning_strike") { }
+	spell_sha_lava_surge() : SpellScriptLoader("spell_sha_lava_surge") { }
 
-    class spell_sha_lightning_strike_SpellScript : public SpellScript
-    {
-        PrepareSpellScript(spell_sha_lightning_strike_SpellScript);
+	class spell_sha_lava_surge_AuraScript : public AuraScript
+	{
+		PrepareAuraScript(spell_sha_lava_surge_AuraScript);
 
-        int count;
+		void HandleEffectPeriodic(AuraEffect const * /*aurEff*/)
+		{
+			// 20% chance to reset the cooldown of Lavaburst and make the next to be instantly casted
+			if (GetCaster())
+			{
+				if (Player* _player = GetCaster()->ToPlayer())
+				{
+					if (_player->HasAura(77756))
+					{
+						if (roll_chance_i(20))
+						{
+							_player->CastSpell(_player, 77762, true);
+							_player->RemoveSpellCooldown(51505, true);
+						}
+					}
+				}
+			}
+		}
 
-        bool Load()
+		void Register()
+		{
+			OnEffectPeriodic += AuraEffectPeriodicFn(spell_sha_lava_surge_AuraScript::HandleEffectPeriodic, EFFECT_1, SPELL_AURA_PERIODIC_DAMAGE);
+		}
+	};
+
+	AuraScript* GetAuraScript() const
+	{
+		return new spell_sha_lava_surge_AuraScript();
+	}
+};
+
+// Called by Far Sight - 6196
+// Glyph of Far Sight - 58059
+class spell_sha_far_sight : public SpellScriptLoader
+{
+    public:
+        spell_sha_far_sight() : SpellScriptLoader("spell_sha_far_sight") { }
+
+        class spell_sha_far_sight_SpellScript : public SpellScript
         {
-            count = 0;
-            return true;
-        }
+            PrepareSpellScript(spell_sha_far_sight_SpellScript);
 
-        void HandleOnHit()
+            SpellCastResult CheckTarget()
+            {
+                // Any effect on Mechanical, Elemental units or player corpses
+                if (Unit* caster = GetCaster())
+                {
+                    if (!caster->GetMap()->IsOutdoors(caster->GetPositionX(), caster->GetPositionY(), caster->GetPositionZ()) && !caster->HasAura(GLYPH_SHA_FAR_SIGHT))
+                        return SPELL_FAILED_ONLY_OUTDOORS;
+                }
+
+                return SPELL_CAST_OK;
+            }
+
+            void Register()
+            {
+                OnCheckCast += SpellCheckCastFn(spell_sha_far_sight_SpellScript::CheckTarget);
+            }
+        };
+
+        SpellScript* GetSpellScript() const
         {
-            int32 damage = GetHitDamage();
-            damage /= count;
-            SetHitDamage(damage);
+            return new spell_sha_far_sight_SpellScript();
         }
+};
 
-        void TargetCorrect(std::list<WorldObject*>& targets)
+// Called by Greater Healing Wave - 77472
+class spell_sha_greater_healing_wave : public SpellScriptLoader
+{
+    public:
+        spell_sha_greater_healing_wave() : SpellScriptLoader("spell_sha_greater_healing_wave") { }
+
+        class spell_sha_greater_healing_wave_SpellScript : public SpellScript
         {
-            count = targets.size();
-        }
+            PrepareSpellScript(spell_sha_greater_healing_wave_SpellScript);
 
-        void Register()
+            void HandleOnHit()
+            {
+                if (Player* _player = GetCaster()->ToPlayer())
+                {
+                    if (Unit* target = GetHitUnit())
+                    {
+                        if (GetSpell()->IsCritForTarget(target))
+                        {
+                            // 30% of heal
+                            // x2 because it's a crit
+                            int32 heal = CalculatePct(GetHitHeal() * 2, 30);
+                            _player->CastCustomSpell(target, 52759, &heal, NULL, NULL, true);
+                        }
+                    }
+                }
+            }
+
+            void Register()
+            {
+                OnHit += SpellHitFn(spell_sha_greater_healing_wave_SpellScript::HandleOnHit);
+            }
+        };
+
+        SpellScript* GetSpellScript() const
         {
-            OnHit += SpellHitFn(spell_sha_lightning_strike_SpellScript::HandleOnHit);
-            OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_sha_lightning_strike_SpellScript::TargetCorrect, EFFECT_0, TARGET_UNIT_DEST_AREA_ENEMY);
+            return new spell_sha_greater_healing_wave_SpellScript();
         }
-    };
+};
 
-    SpellScript* GetSpellScript() const
-    {
-        return new spell_sha_lightning_strike_SpellScript();
-    }
+// 147707 - Glyph of Rain of Frogs
+class spell_sha_glyph_of_rain_of_frogs : public SpellScriptLoader
+{
+    public:
+        spell_sha_glyph_of_rain_of_frogs() : SpellScriptLoader("spell_sha_glyph_of_rain_of_frogs") { }
+
+        class spell_sha_glyph_of_rain_of_frogs_AuraScript : public AuraScript
+        {
+            PrepareAuraScript(spell_sha_glyph_of_rain_of_frogs_AuraScript);
+
+            void OnApply(const AuraEffect* /*aurEff*/, AuraEffectHandleModes /*mode*/)
+            {
+                if (Player* _player = GetTarget()->ToPlayer())
+                    _player->learnSpell(SPELL_SHA_RAIN_OF_FROGS, false);
+            }
+
+            void OnRemove(const AuraEffect* /*aurEff*/, AuraEffectHandleModes /*mode*/)
+            {
+                if (Player* _player = GetTarget()->ToPlayer())
+                    if (_player->HasSpell(SPELL_SHA_GLYPH_OF_RAIN_OF_FROGS))
+                        _player->removeSpell(SPELL_SHA_RAIN_OF_FROGS, false, false);
+            }
+
+            void Register()
+            {
+                OnEffectApply += AuraEffectApplyFn(spell_sha_glyph_of_rain_of_frogs_AuraScript::OnApply, EFFECT_0, SPELL_AURA_DUMMY, AURA_EFFECT_HANDLE_REAL);
+                OnEffectRemove += AuraEffectRemoveFn(spell_sha_glyph_of_rain_of_frogs_AuraScript::OnRemove, EFFECT_0, SPELL_AURA_DUMMY, AURA_EFFECT_HANDLE_REAL);
+            }
+        };
+
+        AuraScript* GetAuraScript() const
+        {
+            return new spell_sha_glyph_of_rain_of_frogs_AuraScript();
+        }
+};
+
+// 147788 - Glyph of Elemental Familiars
+class spell_sha_glyph_of_elemental_familiars : public SpellScriptLoader
+{
+    public:
+        spell_sha_glyph_of_elemental_familiars() : SpellScriptLoader("spell_sha_glyph_of_elemental_familiars") { }
+
+        class spell_sha_glyph_of_elemental_familiars_AuraScript : public AuraScript
+        {
+            PrepareAuraScript(spell_sha_glyph_of_elemental_familiars_AuraScript);
+
+            void OnApply(const AuraEffect* /*aurEff*/, AuraEffectHandleModes /*mode*/)
+            {
+                if (Player* _player = GetTarget()->ToPlayer())
+                    _player->learnSpell(SPELL_SHA_ELEMENTAL_FAMILIAR, false);
+            }
+
+            void OnRemove(const AuraEffect* /*aurEff*/, AuraEffectHandleModes /*mode*/)
+            {
+                if (Player* _player = GetTarget()->ToPlayer())
+                    if (_player->HasSpell(SPELL_SHA_GLYPH_OF_ELEMENTAL_FAMILIARS))
+                        _player->removeSpell(SPELL_SHA_ELEMENTAL_FAMILIAR, false, false);
+            }
+
+            void Register()
+            {
+                OnEffectApply += AuraEffectApplyFn(spell_sha_glyph_of_elemental_familiars_AuraScript::OnApply, EFFECT_0, SPELL_AURA_DUMMY, AURA_EFFECT_HANDLE_REAL);
+                OnEffectRemove += AuraEffectRemoveFn(spell_sha_glyph_of_elemental_familiars_AuraScript::OnRemove, EFFECT_0, SPELL_AURA_DUMMY, AURA_EFFECT_HANDLE_REAL);
+            }
+        };
+
+        AuraScript* GetAuraScript() const
+        {
+            return new spell_sha_glyph_of_elemental_familiars_AuraScript();
+        }
+};
+
+// Elemental Blast Mastery - 120588
+class spell_sha_elemental_blast_mastery : public SpellScriptLoader
+{
+    public:
+        spell_sha_elemental_blast_mastery() : SpellScriptLoader("spell_sha_elemental_blast_mastery") { }
+
+        class spell_sha_elemental_blast_mastery_SpellScript : public SpellScript
+        {
+            PrepareSpellScript(spell_sha_elemental_blast_mastery_SpellScript);
+
+            void HandleAfterCast()
+            {
+                if (Player* _player = GetCaster()->ToPlayer())
+                {
+                    if (Unit* target = GetExplTargetUnit())
+                    {
+                        _player->CastSpell(target, SPELL_SHA_ELEMENTAL_BLAST_FROST_VISUAL, true);
+                        _player->CastSpell(target, SPELL_SHA_ELEMENTAL_BLAST_NATURE_VISUAL, true);
+                    }
+                }
+            }
+
+            void Register()
+            {
+                AfterCast += SpellCastFn(spell_sha_elemental_blast_mastery_SpellScript::HandleAfterCast);
+            }
+        };
+
+        SpellScript* GetSpellScript() const
+        {
+            return new spell_sha_elemental_blast_mastery_SpellScript();
+        }
 };
 
 void AddSC_shaman_spell_scripts()
@@ -2250,10 +2712,11 @@ void AddSC_shaman_spell_scripts()
     new spell_sha_call_of_the_elements();
     new spell_sha_conductivity();
     new spell_sha_ancestral_guidance();
-    new spell_sha_ancestral_guidance_targetting();
+    new spell_sha_ancestral_guidance_heal();
     new spell_sha_echo_of_the_elements();
     new spell_sha_earthgrab();
     new spell_sha_stone_bulwark();
+    new spell_sha_stone_bulwark_passive();
     new spell_sha_mail_specialization();
     new spell_sha_frozen_power();
     new spell_sha_spirit_link();
@@ -2277,7 +2740,14 @@ void AddSC_shaman_spell_scripts()
     new spell_sha_chain_heal();
     new spell_sha_glyph_of_lightning_shield();
     new spell_sha_glyph_of_telluric_currents();
+	new spell_sha_lava_surge();
+    new spell_sha_far_sight();
+    new spell_sha_greater_healing_wave();
+    new spell_sha_healing_rain_heal();
+	new spell_sha_lava_burst();
+    new spell_sha_glyph_of_rain_of_frogs();
+    new spell_sha_glyph_of_elemental_familiars();
     new spell_sha_stormstrike();
-    new spell_sha_lava_burst();
-    new spell_sha_lightning_strike();
+    new spell_sha_elemental_blast_mastery();
+    /*new spell_sha_flame_shock();*/
 }
