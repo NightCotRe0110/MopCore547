@@ -26,6 +26,18 @@
 #include "SpellScript.h"
 #include "SpellAuraEffects.h"
 #include "SkillDiscovery.h"
+#include "GridNotifiers.h"
+#include "GridNotifiersImpl.h"
+#include "CellImpl.h"
+#include <array>
+
+enum DrumsOfRageEnum
+{
+    SPELL_MAGE_TEMPORAL_DISPLACEMENT = 80354,
+    HUNTER_SPELL_INSANITY = 95809,
+    SPELL_SHAMAN_SATED = 57724,
+    SPELL_SHAMAN_EXHAUSTED = 57723,
+};
 
 // Generic script for handling item dummy effects which trigger another spell.
 class spell_item_trigger_spell : public SpellScriptLoader
@@ -667,7 +679,7 @@ public:
             return true;
         }
 
-        void OnStackChange(constAuraEffectPtr /*aurEff*/, AuraEffectHandleModes /*mode*/)
+        void OnStackChange(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
         {
             Unit* target = GetTarget();
             switch (GetStackAmount())
@@ -688,7 +700,7 @@ public:
             }
         }
 
-        void OnRemove(constAuraEffectPtr /*aurEff*/, AuraEffectHandleModes /*mode*/)
+        void OnRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
         {
             Unit* target = GetTarget();
             target->RemoveAurasDueToSpell(SPELL_SHADOWMOURNE_VISUAL_LOW);
@@ -989,7 +1001,7 @@ class spell_magic_eater_food : public SpellScriptLoader
         {
             PrepareAuraScript(spell_magic_eater_food_AuraScript);
 
-            void HandleTriggerSpell(constAuraEffectPtr /*aurEff*/)
+            void HandleTriggerSpell(AuraEffect const* /*aurEff*/)
             {
                 PreventDefaultAction();
                 Unit* target = GetTarget();
@@ -1129,7 +1141,7 @@ class spell_item_crystal_prison_dummy_dnd : public SpellScriptLoader
             void HandleDummy(SpellEffIndex /* effIndex */)
             {
                 if (Creature* target = GetHitCreature())
-                    if (target->IsDead() && !target->isPet())
+                    if (target->isDead() && !target->isPet())
                     {
                         GetCaster()->SummonGameObject(OBJECT_IMPRISONED_DOOMGUARD, target->GetPositionX(), target->GetPositionY(), target->GetPositionZ(), target->GetOrientation(), 0, 0, 0, 0, uint32(target->GetRespawnTime()-time(NULL)));
                         target->DespawnOrUnsummon();
@@ -1397,7 +1409,7 @@ class spell_item_demon_broiled_surprise : public SpellScriptLoader
                     return SPELL_FAILED_CANT_DO_THAT_RIGHT_NOW;
 
                 if (Creature* creature = player->FindNearestCreature(NPC_ABYSSAL_FLAMEBRINGER, 10, false))
-                    if (creature->IsDead())
+                    if (creature->isDead())
                         return SPELL_CAST_OK;
                 return SPELL_FAILED_NOT_HERE;
             }
@@ -1746,7 +1758,7 @@ class spell_item_pygmy_oil : public SpellScriptLoader
             void HandleDummy(SpellEffIndex /* effIndex */)
             {
                 Unit* caster = GetCaster();
-                if (AuraPtr aura = caster->GetAura(SPELL_PYGMY_OIL_PYGMY_AURA))
+                if (Aura* aura = caster->GetAura(SPELL_PYGMY_OIL_PYGMY_AURA))
                     aura->RefreshDuration();
                 else
                 {
@@ -1912,7 +1924,7 @@ class spell_item_muisek_vessel : public SpellScriptLoader
             void HandleDummy(SpellEffIndex /*effIndex*/)
             {
                 if (Creature* target = GetHitCreature())
-                    if (target->IsDead())
+                    if (target->isDead())
                         target->DespawnOrUnsummon();
             }
 
@@ -2319,13 +2331,13 @@ class spell_item_stay_of_execution : public SpellScriptLoader
                 return GetUnitOwner()->GetTypeId() == TYPEID_PLAYER;
             }
 
-            void Absorb(AuraEffectPtr aurEff, DamageInfo & dmgInfo, uint32 & absorbAmount)
+            void Absorb(AuraEffect* aurEff, DamageInfo & dmgInfo, uint32 & absorbAmount)
             {
                 absorbAmount = CalculatePct(dmgInfo.GetDamage(), 20);
                 withdrawn += absorbAmount;
             }
 
-            void OnRemove(constAuraEffectPtr /*aurEff*/, AuraEffectHandleModes /*mode*/)
+            void OnRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
             { 
                 if (!GetCaster())
                     return;
@@ -2336,8 +2348,8 @@ class spell_item_stay_of_execution : public SpellScriptLoader
 
             void Register()
             {
-                 OnEffectAbsorb += AuraEffectAbsorbFn(spell_item_stay_of_execution_AuraScript::Absorb, EFFECT_0);
-                 OnEffectRemove += AuraEffectRemoveFn(spell_item_stay_of_execution_AuraScript::OnRemove, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB, AURA_EFFECT_HANDLE_REAL);
+                OnEffectAbsorb += AuraEffectAbsorbFn(spell_item_stay_of_execution_AuraScript::Absorb, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB);
+                AfterEffectRemove += AuraEffectRemoveFn(spell_item_stay_of_execution_AuraScript::OnRemove, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB, AURA_EFFECT_HANDLE_REAL);
             }
 
         private:
@@ -2359,7 +2371,7 @@ class spell_item_flameseers_staff_flamebreaker : public SpellScriptLoader
         {
             PrepareAuraScript(spell_item_flameseers_staff_flamebreaker_AuraScript);
 
-            void OnRemove(constAuraEffectPtr /*aurEff*/, AuraEffectHandleModes /*mode*/)
+            void OnRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
             { 
                 if (!GetCaster() || !GetTarget())
                     return;
@@ -2373,7 +2385,7 @@ class spell_item_flameseers_staff_flamebreaker : public SpellScriptLoader
 
             void Register()
             {
-                 OnEffectRemove += AuraEffectRemoveFn(spell_item_flameseers_staff_flamebreaker_AuraScript::OnRemove, EFFECT_1, SPELL_AURA_DUMMY, AURA_EFFECT_HANDLE_REAL);
+                AfterEffectRemove += AuraEffectRemoveFn(spell_item_flameseers_staff_flamebreaker_AuraScript::OnRemove, EFFECT_1, SPELL_AURA_DUMMY, AURA_EFFECT_HANDLE_REAL);
             }
         };
 
@@ -2383,155 +2395,1359 @@ class spell_item_flameseers_staff_flamebreaker : public SpellScriptLoader
         }
 };
 
-//146193 Endurance of Niuzao
-class spell_item_endurance_of_niuzao : public SpellScriptLoader
+class spell_drums_of_rage : public SpellScriptLoader
 {
-	public:
-		spell_item_endurance_of_niuzao() : SpellScriptLoader("spell_item_endurance_of_niuzao") { }
+public:
+    spell_drums_of_rage() : SpellScriptLoader("spell_drums_of_rage") { }
 
-		class spell_endurance_of_niuzao_AuraScript : public AuraScript
-		{
-			PrepareAuraScript(spell_endurance_of_niuzao_AuraScript);
+    class spell_drums_of_rage_SpellScript : public SpellScript
+    {
+        PrepareSpellScript(spell_drums_of_rage_SpellScript);
 
-			void CalculateAmount(constAuraEffectPtr aurEff, int32 & amount, bool & canBeRecalculated)
-			{
-				amount = -1;
-			}
+        void RemoveInvalidTargets(std::list<WorldObject*>& targets)
+        {
+            targets.remove_if(JadeCore::UnitAuraCheck(true, HUNTER_SPELL_INSANITY));
+            targets.remove_if(JadeCore::UnitAuraCheck(true, SPELL_SHAMAN_EXHAUSTED));
+            targets.remove_if(JadeCore::UnitAuraCheck(true, SPELL_SHAMAN_SATED));
+            targets.remove_if(JadeCore::UnitAuraCheck(true, SPELL_MAGE_TEMPORAL_DISPLACEMENT));
+        }
 
-			void Absorb(AuraEffectPtr /*aurEff*/, DamageInfo & dmgInfo, uint32 & absorbAmount)
-			{
-				Unit* victim = GetTarget();
-				int32 remainingHealth = victim->GetHealth() - dmgInfo.GetDamage();
-				// If damage kills us
-				if (remainingHealth <= 0 && !victim->HasAura(148010))
-				{
-					absorbAmount = dmgInfo.GetDamage();
-					victim->AddAura(148010, victim);
-				}
-			}
+        void ApplyDebuff()
+        {
+            if (Unit* target = GetHitUnit())
+            {
+                /// We must add a check here too, players can use a bug allowing them to receive twice a buff like this one
+                /// If they cast the spells exactly at the same time
+                if (target->HasAura(SPELL_SHAMAN_EXHAUSTED) || target->HasAura(HUNTER_SPELL_INSANITY) ||
+                    target->HasAura(SPELL_MAGE_TEMPORAL_DISPLACEMENT) || target->HasAura(SPELL_SHAMAN_SATED))
+                {
+                    target->RemoveAura(GetSpellInfo()->Id);
+                    return;
+                }
 
-			void Register()
-			{
-				DoEffectCalcAmount += AuraEffectCalcAmountFn(spell_endurance_of_niuzao_AuraScript::CalculateAmount, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB);
-				OnEffectAbsorb += AuraEffectAbsorbFn(spell_endurance_of_niuzao_AuraScript::Absorb, EFFECT_0);
-			}
-		};
+                target->CastSpell(target, SPELL_SHAMAN_EXHAUSTED, true);
+            }
+        }
 
-		AuraScript* GetAuraScript() const
-		{
-			return new spell_endurance_of_niuzao_AuraScript();
-		}
+        void Register()
+        {
+            OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_drums_of_rage_SpellScript::RemoveInvalidTargets, EFFECT_0, TARGET_UNIT_CASTER_AREA_RAID);
+            OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_drums_of_rage_SpellScript::RemoveInvalidTargets, EFFECT_1, TARGET_UNIT_CASTER_AREA_RAID);
+            OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_drums_of_rage_SpellScript::RemoveInvalidTargets, EFFECT_2, TARGET_UNIT_CASTER_AREA_RAID);
+            AfterHit += SpellHitFn(spell_drums_of_rage_SpellScript::ApplyDebuff);
+        }
+    };
+
+    SpellScript* GetSpellScript() const
+    {
+        return new spell_drums_of_rage_SpellScript();
+    }
 };
 
-//146194 Flurry of Xuen
-class spell_item_flurry_of_xuen : public SpellScriptLoader
+enum JardsSpells
 {
-	public:
-		spell_item_flurry_of_xuen() : SpellScriptLoader("spell_item_flurry_of_xuen") { }
+    SPELL_JARDS_PECULIAR_ENERGY_SOURCE      = 143743, // script
 
-		class spell_item_flurry_of_xuen_AuraScript : public AuraScript
-		{
-			PrepareAuraScript(spell_item_flurry_of_xuen_AuraScript);
+    SPELL_JARDS_PECULIAR_ENERGY_SOURCE_2    = 139176, // create item
+    SPELL_SKY_GOLEM                         = 139192,
+    SPELL_ADVANCED_REFRIGERATION_UNIT       = 139197,
+    SPELL_PIERRE                            = 139196,
+    SPELL_RASCAL_BOT                        = 143714,
 
-			void OnTick0(constAuraEffectPtr aurEff)
-			{
-				PreventDefaultAction();
-				if (Unit* caster = GetCaster())
-				{
-					if (caster->getClass() != CLASS_HUNTER)
-						caster->CastSpell(caster, 147891, true);
-				}
-			}
-
-			void OnTick1(constAuraEffectPtr aurEff)
-			{
-				PreventDefaultAction();
-				if (Unit* caster = GetCaster())
-				{
-					if (caster->getClass() == CLASS_HUNTER)
-					{
-						if (Player* player = caster->ToPlayer())
-						{
-							if (player->GetSelectedUnit())
-								caster->CastSpell(player->GetSelectedUnit(), 149276, true);
-						}
-					}
-				}
-			}
-
-			void Register()
-			{
-				OnEffectPeriodic += AuraEffectPeriodicFn(spell_item_flurry_of_xuen_AuraScript::OnTick0, EFFECT_0, SPELL_AURA_PERIODIC_TRIGGER_SPELL);
-				OnEffectPeriodic += AuraEffectPeriodicFn(spell_item_flurry_of_xuen_AuraScript::OnTick1, EFFECT_1, SPELL_AURA_PERIODIC_TRIGGER_SPELL);
-			}
-		};
-
-		AuraScript* GetAuraScript() const
-		{
-			return new spell_item_flurry_of_xuen_AuraScript();
-		}
 };
-//146197	Essence of Yu'lon
-class spell_item_essence_of_yulon : public SpellScriptLoader
+
+const uint32 allJardSpells[5] = 
 {
-	public:
-		spell_item_essence_of_yulon() : SpellScriptLoader("spell_item_essence_of_yulon") { }
-
-		class spell_item_essence_of_yulon_AuraScript : public AuraScript
-		{
-			PrepareAuraScript(spell_item_essence_of_yulon_AuraScript);
-
-			void OnTick(constAuraEffectPtr aurEff)
-			{
-				PreventDefaultAction();
-				if (Unit* caster = GetCaster())
-				{
-					if (Unit* target = GetTarget())
-						caster->CastSpell(target, 148008, true);
-				}
-			}
-
-			void Register()
-			{
-				OnEffectPeriodic += AuraEffectPeriodicFn(spell_item_essence_of_yulon_AuraScript::OnTick, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
-			}
-		};
-
-		AuraScript* GetAuraScript() const
-		{
-			return new spell_item_essence_of_yulon_AuraScript();
-		}
+    SPELL_JARDS_PECULIAR_ENERGY_SOURCE_2,
+    SPELL_SKY_GOLEM,
+    SPELL_ADVANCED_REFRIGERATION_UNIT,
+    SPELL_PIERRE,
+    SPELL_RASCAL_BOT
 };
-//148008	Essence of Yu'lon
-class spell_item_essence_of_yulon_dmg : public SpellScriptLoader
+
+class spell_item_jards_peculiar_energy_source : public SpellScriptLoader
 {
-	public:
-		spell_item_essence_of_yulon_dmg() : SpellScriptLoader("spell_item_essence_of_yulon_dmg") { }
+    public:
+        spell_item_jards_peculiar_energy_source() : SpellScriptLoader("spell_item_jards_peculiar_energy_source") { }
 
-		class spell_item_essence_of_yulon_SpellScript : public SpellScript
-		{
-			PrepareSpellScript(spell_item_essence_of_yulon_SpellScript)
+        class spell_item_jards_peculiar_energy_source_SpellScript : public SpellScript
+        {
+            PrepareSpellScript(spell_item_jards_peculiar_energy_source_SpellScript);
 
-			void HandleOnHit()
-			{
-				float damage = float(GetCaster()->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_FROST)) * 0.4f;
-				SetHitDamage(damage);
-			}
+            SpellCastResult HandleCheck()
+            {
+                if (!GetCaster())
+                    return SPELL_CAST_OK;
 
-			void Register()
-			{
-				OnHit += SpellHitFn(spell_item_essence_of_yulon_SpellScript::HandleOnHit);
-			}
-		};
+                if (Player* player = GetCaster()->ToPlayer())
+                {
+                    for (uint8 i = 0; i < 5; ++i)
+                        if (!player->HasSpell(allJardSpells[i]))
+                            return SPELL_CAST_OK;
+                }
 
-		SpellScript* GetSpellScript() const
-		{
-			return new spell_item_essence_of_yulon_SpellScript();
-		}
+                SetCustomCastResultMessage(SPELL_CUSTOM_ERROR_NOTHING_TO_DISCOVER);
+                return SPELL_FAILED_CUSTOM_ERROR;
+            }
+
+            void HandleHit(SpellEffIndex effIndex)
+            {
+                if (!GetCaster())
+                    return;
+
+                if (Player* player = GetCaster()->ToPlayer())
+                {
+                    for (uint8 i = 0; i < 5; ++i)
+                    {
+                        if (!player->HasSpell(allJardSpells[i]))
+                            player->learnSpell(allJardSpells[i], false);
+                    }
+                }
+            }
+
+            void Register()
+            {
+                OnEffectHitTarget += SpellEffectFn(spell_item_jards_peculiar_energy_source_SpellScript::HandleHit, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
+            }
+        };
+
+        SpellScript* GetSpellScript() const
+        {
+            return new spell_item_jards_peculiar_energy_source_SpellScript();
+        }
+};
+
+enum
+{
+    SPELL_ENDURANCE_OF_NIUZAO_COOLDOWN = 148010,
+    DK_SPELL_SHROUD_OF_PURGATORY = 116888,
+};
+
+// 146193 - Endurance of Niuzao
+class spell_endurance_of_niuzao_absorb : public SpellScriptLoader
+{
+    public:
+        spell_endurance_of_niuzao_absorb() : SpellScriptLoader("spell_endurance_of_niuzao_absorb") { }
+
+        class spell_endurance_of_niuzao_absorb_AuraScript : public AuraScript
+        {
+            PrepareAuraScript(spell_endurance_of_niuzao_absorb_AuraScript);
+
+            bool CalculateAmount(AuraEffect const* /*auraEffect*/, int32& amount, bool& /*canBeRecalculated*/)
+            {
+                amount = -1;
+                return true;
+            }
+
+            void Absorb(AuraEffect* /*auraEffect*/, DamageInfo& dmgInfo, uint32& absorbAmount)
+            {
+                Unit* target = GetTarget();
+                if (dmgInfo.GetDamage() < target->GetHealth())
+                    return;
+                
+                Player* player = target->ToPlayer();
+                if (!player || player->GetRoleForGroup(player->GetSpecializationId(player->GetActiveSpec())) != ROLES_TANK)
+                    return;
+
+                // Disable this script if player is under Shroud of Purgatory or on CD
+                if (target->HasAura(SPELL_ENDURANCE_OF_NIUZAO_COOLDOWN) || target->HasAura(DK_SPELL_SHROUD_OF_PURGATORY))
+                    return;
+
+                target->CastSpell(target, SPELL_ENDURANCE_OF_NIUZAO_COOLDOWN, true);
+                target->SetHealth(1);
+                absorbAmount = dmgInfo.GetDamage();
+            }
+
+            void Register()
+            {
+                DoEffectCalcAmount += AuraEffectCalcAmountFn(spell_endurance_of_niuzao_absorb_AuraScript::CalculateAmount, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB);
+                OnEffectAbsorb += AuraEffectAbsorbFn(spell_endurance_of_niuzao_absorb_AuraScript::Absorb, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB);
+            }
+        };
+
+        AuraScript* GetAuraScript() const
+        {
+            return new spell_endurance_of_niuzao_absorb_AuraScript();
+        }
+};
+
+/// Drink -   430,   431,   432,   1133,   1135,   1137,  10250,  22734,  27089,  34291,
+///         43182, 43183, 46755,  57073,  61830,  72623,  80166,  80167,  87958,  87959,
+///         92736, 92797, 92800,  92803, 104262, 104270, 105230, 105232, 118358, 130336, 
+///         149000
+/// Drink Coffee - 49472
+/// Drink mecanism in arenas
+class spell_item_drinks : public SpellScriptLoader
+{
+    public:
+        spell_item_drinks() : SpellScriptLoader("spell_item_drinks") { }
+
+        class spell_item_drinks_AuraScript : public AuraScript
+        {
+            PrepareAuraScript(spell_item_drinks_AuraScript);
+
+            void CorrectAmounts(AuraEffect const* /*p_AurEff*/, AuraEffectHandleModes /*p_Mode*/)
+            {
+                Unit* l_Caster = GetCaster();
+                if (!l_Caster)
+                    return;
+
+                Aura* l_Aura = GetAura();
+                AuraEffect* l_AuraEffect = l_Aura->GetEffect(SpellEffIndex::EFFECT_0);
+                AuraEffect* l_DummyEffect = l_Aura->GetEffect(SpellEffIndex::EFFECT_1);
+                if (!l_AuraEffect || !l_DummyEffect)
+                    return;
+
+                if (l_Caster->GetTypeId() == TypeID::TYPEID_PLAYER && l_Caster->ToPlayer()->InArena())
+                {
+                    ///< In arena, this does nothing for 2s and starts working after the first tick (2s later)
+                    l_AuraEffect->ChangeAmount(0);
+                }
+                else
+                {
+                    l_AuraEffect->ChangeAmount(l_DummyEffect->GetAmount() * 5);
+                    l_DummyEffect->SetPeriodic(false);
+                }
+            }
+
+            void OnTick(AuraEffect const* aurEff)
+            {
+                Aura* l_Aura = GetAura();
+                AuraEffect* l_AuraEffect = l_Aura->GetEffect(SpellEffIndex::EFFECT_0);
+                AuraEffect* l_DummyEffect = l_Aura->GetEffect(SpellEffIndex::EFFECT_1);
+                if (!l_AuraEffect || !l_DummyEffect)
+                    return;
+
+                ///< Compensate for the lost 2s
+                switch (l_DummyEffect->GetTickNumber())
+                {
+                    case 1:
+                        l_AuraEffect->ChangeAmount(l_DummyEffect->GetAmount() * 5 * 5 / 3); ///< 166%
+                        break;
+
+                    case 2:
+                        l_AuraEffect->ChangeAmount(l_DummyEffect->GetAmount() * 5 * 4 / 3); ///< 133%
+                        break;
+
+                    case 3:
+                        l_AuraEffect->ChangeAmount(l_DummyEffect->GetAmount()); ///< 100%
+                        l_DummyEffect->SetPeriodic(false); ///< No longer needs update
+                        break;
+
+                    default:
+                        break;
+                }
+            }
+
+            void Register() override
+            {
+                AfterEffectApply += AuraEffectApplyFn(spell_item_drinks_AuraScript::CorrectAmounts, SpellEffIndex::EFFECT_0, AuraType::SPELL_AURA_MOD_POWER_REGEN, AuraEffectHandleModes::AURA_EFFECT_HANDLE_REAL_OR_REAPPLY_MASK);
+                OnEffectPeriodic += AuraEffectPeriodicFn(spell_item_drinks_AuraScript::OnTick, SpellEffIndex::EFFECT_1, AuraType::SPELL_AURA_PERIODIC_DUMMY);
+            }
+        };
+
+        AuraScript* GetAuraScript() const override
+        {
+            return new spell_item_drinks_AuraScript();
+        }
+};
+
+/// Blades of Renataki - 138756
+class spell_item_blades_of_renataki: public SpellScriptLoader
+{
+    public:
+        spell_item_blades_of_renataki() : SpellScriptLoader("spell_item_blades_of_renataki") { }
+
+        enum BladesOfRenatakiSpells
+        {
+            BLADES = 138737
+        };
+
+        class spell_item_blades_of_renataki_AuraScript : public AuraScript
+        {
+            PrepareAuraScript(spell_item_blades_of_renataki_AuraScript);
+
+            bool Validate(SpellInfo const* /*spellEntry*/) override
+            {
+                if (!sSpellMgr->GetSpellInfo(BladesOfRenatakiSpells::BLADES))
+                    return false;
+
+                return true;
+            }
+
+            void OnPeriodic(AuraEffect const* p_AurEff)
+            {
+                if (!p_AurEff || !p_AurEff->GetBase())
+                    return;
+
+                if (Unit* l_Target = GetUnitOwner())
+                {
+                    if (Player* l_Player = l_Target->ToPlayer())
+                        l_Target->CastSpell(l_Target, BladesOfRenatakiSpells::BLADES, true, l_Player->GetItemByGuid(p_AurEff->GetBase()->GetCastItemGUID()), nullptr, l_Target->GetGUID());
+                }
+            }
+
+            void Register()
+            {
+                OnEffectPeriodic += AuraEffectPeriodicFn(spell_item_blades_of_renataki_AuraScript::OnPeriodic, SpellEffIndex::EFFECT_0, AuraType::SPELL_AURA_PERIODIC_DUMMY);
+            }
+        };
+
+        AuraScript* GetAuraScript() const
+        {
+            return new spell_item_blades_of_renataki_AuraScript();
+        }
+};
+
+/// Spark of Zandalar - 138958
+class spell_item_spark_of_zandalar: public SpellScriptLoader
+{
+    public:
+        spell_item_spark_of_zandalar() : SpellScriptLoader("spell_item_spark_of_zandalar") { }
+
+        enum SparkOfZandalar
+        {
+            ZANDALARI_WARRIOR = 138960
+        };
+
+        class spell_item_spark_of_zandalar_AuraScript : public AuraScript
+        {
+            PrepareAuraScript(spell_item_spark_of_zandalar_AuraScript);
+
+            bool Validate(SpellInfo const* /*spellEntry*/) override
+            {
+                if (!sSpellMgr->GetSpellInfo(SparkOfZandalar::ZANDALARI_WARRIOR))
+                    return false;
+
+                return true;
+            }
+
+            void CheckStack(AuraEffect const* p_AurEff, AuraEffectHandleModes /*p_Mode*/)
+            {
+                if (Unit* l_Owner = GetUnitOwner())
+                {
+                    Aura* l_Aura = p_AurEff->GetBase();
+                    if (l_Aura->GetStackAmount() >= 10)
+                    {
+                        if (Aura* l_ZandalariWarrior = l_Owner->GetAura(SparkOfZandalar::ZANDALARI_WARRIOR))
+                            l_ZandalariWarrior->RefreshDuration(); ///< Do not recast if the aura is already there
+                        else
+                            l_Owner->CastSpell(l_Owner, SparkOfZandalar::ZANDALARI_WARRIOR, true);
+
+                        l_Owner->RemoveAura(l_Aura, AuraRemoveMode::AURA_REMOVE_BY_DEFAULT);
+                    }
+                }
+            }
+
+            void Register()
+            {
+                OnEffectApply += AuraEffectApplyFn(spell_item_spark_of_zandalar_AuraScript::CheckStack, SpellEffIndex::EFFECT_0, AuraType::SPELL_AURA_DUMMY, AuraEffectHandleModes::AURA_EFFECT_HANDLE_REAL_OR_REAPPLY_MASK);
+            }
+        };
+
+        AuraScript* GetAuraScript() const
+        {
+            return new spell_item_spark_of_zandalar_AuraScript();
+        }
+};
+
+/// Rune of Re-Origination - 139116 - last update: 5.4.2 17688
+enum ReoriginationSpells
+{
+    REORIGINATION_CRITICAL = 139117,
+    REORIGINATION_MASTERY  = 139120,
+    REORIGINATION_HASTE    = 139121
+};
+
+class spell_item_rune_of_reorigination : public SpellScriptLoader
+{
+    public:
+        spell_item_rune_of_reorigination() : SpellScriptLoader("spell_item_rune_of_reorigination") { }
+
+        class spell_item_rune_of_reorigination_AuraScript : public AuraScript
+        {
+            PrepareAuraScript(spell_item_rune_of_reorigination_AuraScript);
+
+            void HandleProc(AuraEffect const* p_AurEff, ProcEventInfo& p_ProcInfo)
+            {
+                if (!GetUnitOwner()) ///< Can that even be null?
+                    return;
+
+                if (Player* l_Owner = GetUnitOwner()->ToPlayer())
+                {
+                    uint32 l_CritScore = l_Owner->GetUInt32Value(PLAYER_FIELD_COMBAT_RATING_1 + CombatRating::CR_CRIT_MELEE);
+                    uint32 l_HasteScore = l_Owner->GetUInt32Value(PLAYER_FIELD_COMBAT_RATING_1 + CombatRating::CR_HASTE_MELEE);
+                    uint32 l_MasteryScore = l_Owner->GetUInt32Value(PLAYER_FIELD_COMBAT_RATING_1 + CombatRating::CR_MASTERY);
+
+                    ReoriginationSpells l_SpellId;
+                    if (l_CritScore > l_HasteScore)
+                    {
+                        if (l_CritScore > l_MasteryScore)
+                            l_SpellId = ReoriginationSpells::REORIGINATION_CRITICAL;
+                        else
+                            l_SpellId = ReoriginationSpells::REORIGINATION_MASTERY;
+                    }
+                    else
+                    {
+                        if (l_HasteScore > l_MasteryScore)
+                            l_SpellId = ReoriginationSpells::REORIGINATION_HASTE;
+                        else
+                            l_SpellId = ReoriginationSpells::REORIGINATION_MASTERY;
+                    }
+
+                    l_Owner->CastSpell(l_Owner, l_SpellId, true);
+                }
+            }
+
+            void Register()
+            {
+                OnEffectProc += AuraEffectProcFn(spell_item_rune_of_reorigination_AuraScript::HandleProc, SpellEffIndex::EFFECT_0, AuraType::SPELL_AURA_DUMMY);
+            }
+        };
+
+        AuraScript* GetAuraScript() const
+        {
+            return new spell_item_rune_of_reorigination_AuraScript();
+        }
+};
+
+/// Called by Re-Origination - 139117 - 139120 - 139121 - last updated: 5.4.2 17688
+class spell_aura_reorigination : public SpellScriptLoader
+{
+    public:
+        spell_aura_reorigination() : SpellScriptLoader("spell_aura_reorigination") { }
+
+        class spell_aura_reorigination_AuraScript : public AuraScript
+        {
+            PrepareAuraScript(spell_aura_reorigination_AuraScript);
+
+            template<CombatRating Rating>
+            bool DoubleRating(AuraEffect const* p_AurEff, int32& p_Amount, bool & /*p_CanBeRecalculated*/)
+            {
+                if (!GetUnitOwner()) ///< Can that even be null?
+                    return false;
+
+                if (Player* l_Player = GetUnitOwner()->ToPlayer())
+                {
+                    p_Amount = l_Player->GetUInt32Value(PLAYER_FIELD_COMBAT_RATING_1 + Rating);
+                    return true;
+                }
+
+                return false;
+            }
+
+            template<CombatRating Rating>
+            bool ZeroRating(AuraEffect const* p_AurEff, int32& p_Amount, bool & /*p_CanBeRecalculated*/)
+            {
+                if (!GetUnitOwner()) ///< Can that even be null?
+                    return false;
+
+                if (Player* l_Player = GetUnitOwner()->ToPlayer())
+                {
+                    p_Amount = -static_cast<int32>(l_Player->GetUInt32Value(PLAYER_FIELD_COMBAT_RATING_1 + Rating));
+                    return true;
+                }
+
+                return false;
+            }
+
+            void Register() override
+            {
+                switch (m_scriptSpellId)
+                {
+                    case ReoriginationSpells::REORIGINATION_CRITICAL:
+                        DoEffectCalcAmount += AuraEffectCalcAmountFn(spell_aura_reorigination_AuraScript::DoubleRating<CombatRating::CR_CRIT_MELEE>, EFFECT_0, SPELL_AURA_MOD_RATING);
+                        DoEffectCalcAmount += AuraEffectCalcAmountFn(spell_aura_reorigination_AuraScript::ZeroRating<CombatRating::CR_MASTERY>,      EFFECT_1, SPELL_AURA_MOD_RATING);
+                        DoEffectCalcAmount += AuraEffectCalcAmountFn(spell_aura_reorigination_AuraScript::ZeroRating<CombatRating::CR_HASTE_MELEE>,  EFFECT_2, SPELL_AURA_MOD_RATING);
+                        break;
+
+                    case ReoriginationSpells::REORIGINATION_MASTERY:
+                        DoEffectCalcAmount += AuraEffectCalcAmountFn(spell_aura_reorigination_AuraScript::DoubleRating<CombatRating::CR_MASTERY>,   EFFECT_0, SPELL_AURA_MOD_RATING);
+                        DoEffectCalcAmount += AuraEffectCalcAmountFn(spell_aura_reorigination_AuraScript::ZeroRating<CombatRating::CR_CRIT_MELEE>,  EFFECT_1, SPELL_AURA_MOD_RATING);
+                        DoEffectCalcAmount += AuraEffectCalcAmountFn(spell_aura_reorigination_AuraScript::ZeroRating<CombatRating::CR_HASTE_MELEE>, EFFECT_2, SPELL_AURA_MOD_RATING);
+                        break;
+
+                    case ReoriginationSpells::REORIGINATION_HASTE:
+                        DoEffectCalcAmount += AuraEffectCalcAmountFn(spell_aura_reorigination_AuraScript::DoubleRating<CombatRating::CR_HASTE_MELEE>, EFFECT_0, SPELL_AURA_MOD_RATING);
+                        DoEffectCalcAmount += AuraEffectCalcAmountFn(spell_aura_reorigination_AuraScript::ZeroRating<CombatRating::CR_MASTERY>,       EFFECT_1, SPELL_AURA_MOD_RATING);
+                        DoEffectCalcAmount += AuraEffectCalcAmountFn(spell_aura_reorigination_AuraScript::ZeroRating<CombatRating::CR_CRIT_MELEE>,    EFFECT_2, SPELL_AURA_MOD_RATING);
+                        break;
+                }
+            }
+        };
+
+        AuraScript* GetAuraScript() const
+        {
+            return new spell_aura_reorigination_AuraScript();
+        }
+};
+
+/// Zandalari Warding - 138925 - last update: 5.4.2 17688
+class spell_item_zandalari_warding : public SpellScriptLoader
+{
+    public:
+        spell_item_zandalari_warding() : SpellScriptLoader("spell_item_zandalari_warding") { }
+
+        enum eSpells
+        {
+            BlessingOfZuldazar = 138967
+        };
+
+        class spell_item_zandalari_warding_SpellScript : public SpellScript
+        {
+            PrepareSpellScript(spell_item_zandalari_warding_SpellScript);
+
+            SpellCastResult CheckCast()
+            {
+                if (Unit* l_Caster = GetCaster())
+                {
+                    if (!l_Caster->HasAura(eSpells::BlessingOfZuldazar))
+                        return SpellCastResult::SPELL_FAILED_CANT_DO_THAT_RIGHT_NOW;
+                }
+                else
+                    return SpellCastResult::SPELL_FAILED_DONT_REPORT;
+
+                return SpellCastResult::SPELL_CAST_OK;
+            }
+
+            void Register() override
+            {
+                OnCheckCast += SpellCheckCastFn(spell_item_zandalari_warding_SpellScript::CheckCast);
+            }
+        };
+
+        class spell_item_zandalari_warding_AuraScript : public AuraScript
+        {
+            PrepareAuraScript(spell_item_zandalari_warding_AuraScript);
+
+            bool CalculateAmount(AuraEffect const* /*p_AuraEffect*/, int32& p_Amount, bool& /*p_CanBeRecalculated*/)
+            {
+                if (Unit* l_Caster = GetCaster())
+                {
+                    uint32 l_BlessingCounts = 0;
+                    if (Aura* l_ZandalariBlessing = l_Caster->GetAura(eSpells::BlessingOfZuldazar))
+                    {
+                        l_BlessingCounts += l_ZandalariBlessing->GetStackAmount();
+                        l_ZandalariBlessing->Remove();
+                    }
+
+                    p_Amount *= l_BlessingCounts;
+                }
+
+                return false;
+            }
+
+            void Register() override
+            {
+                DoEffectCalcAmount += AuraEffectCalcAmountFn(spell_item_zandalari_warding_AuraScript::CalculateAmount, SpellEffIndex::EFFECT_0, AuraType::SPELL_AURA_SCHOOL_ABSORB);
+            }
+        };
+
+        AuraScript* GetAuraScript() const
+        {
+            return new spell_item_zandalari_warding_AuraScript();
+        }
+
+        SpellScript* GetSpellScript() const
+        {
+            return new spell_item_zandalari_warding_SpellScript();
+        }
+};
+
+class spell_item_ancient_knowledge : public SpellScriptLoader
+{
+    public:
+        spell_item_ancient_knowledge() : SpellScriptLoader("spell_item_ancient_knowledge") { }
+
+        class spell_item_ancient_knowledge_SpellScript : public SpellScript
+        {
+            PrepareSpellScript(spell_item_ancient_knowledge_SpellScript);
+
+            SpellCastResult CheckCast()
+            {
+                if (Unit* l_Caster = GetCaster())
+                {
+                    if (l_Caster->getLevel() > 84)
+                        return SpellCastResult::SPELL_FAILED_HIGHLEVEL;
+                }
+
+                return SpellCastResult::SPELL_CAST_OK;
+            }
+
+            void Register() override
+            {
+                OnCheckCast += SpellCheckCastFn(spell_item_ancient_knowledge_SpellScript::CheckCast);
+            }
+        };
+
+        SpellScript* GetSpellScript() const override
+        {
+            return new spell_item_ancient_knowledge_SpellScript();
+        }
+};
+
+class spell_item_bilgewater_molotov : public SpellScriptLoader
+{
+    public:
+        spell_item_bilgewater_molotov() : SpellScriptLoader("spell_item_bilgewater_molotov") { }
+
+        class spell_item_bilgewater_molotov_SpellScript : public SpellScript
+        {
+            PrepareSpellScript(spell_item_bilgewater_molotov_SpellScript);
+
+            SpellCastResult CheckCast()
+            {
+                if (!GetExplTargetUnit() || GetExplTargetUnit()->GetEntry() != 67359)
+                    return SpellCastResult::SPELL_FAILED_BAD_TARGET_FILTER;
+
+                return SpellCastResult::SPELL_CAST_OK;
+            }
+
+            void Register() override
+            {
+                OnCheckCast += SpellCheckCastFn(spell_item_bilgewater_molotov_SpellScript::CheckCast);
+            }
+        };
+
+        SpellScript* GetSpellScript() const override
+        {
+            return new spell_item_bilgewater_molotov_SpellScript();
+        }
+};
+
+class spell_item_universal_remote : public SpellScriptLoader
+{
+public:
+    spell_item_universal_remote() : SpellScriptLoader("spell_item_universal_remote") { }
+
+    class spell_item_universal_remote_SpellScript : public SpellScript
+    {
+        PrepareSpellScript(spell_item_universal_remote_SpellScript);
+
+        SpellCastResult CheckCast()
+        {
+            if (!GetExplTargetUnit() || (GetExplTargetUnit()->GetEntry() != 67967 && GetExplTargetUnit()->GetEntry() != 68011))
+                return SpellCastResult::SPELL_FAILED_BAD_TARGET_FILTER;
+
+            return SpellCastResult::SPELL_CAST_OK;
+        }
+
+        void Register() override
+        {
+            OnCheckCast += SpellCheckCastFn(spell_item_universal_remote_SpellScript::CheckCast);
+        }
+    };
+
+    SpellScript* GetSpellScript() const override
+    {
+        return new spell_item_universal_remote_SpellScript();
+    }
+};
+
+enum e_item_assurance_of_consequence
+{
+    FERAL_DRUID     = 145961,
+    BM_HUNTER       = 145964,
+    MM_HUNTER       = 145965,
+    SURV_HUNTER     = 145966,
+    WINDWALKER_MONK = 145969,
+    ENCH_SHAMAN     = 145986,
+    ASSASIN_ROGUE   = 145983,
+    COMBAT_ROGUE    = 145984,
+    SUB_ROGUE       = 145985,
+};
+
+const static std::array<std::array<uint32, 2>, 9> s_AssuranceOfConsequenceSpells =
+{
+    {
+        { SPEC_DRUID_CAT, FERAL_DRUID },
+        { SPEC_HUNTER_BEASTMASTER, BM_HUNTER },
+        { SPEC_HUNTER_MARKSMAN, MM_HUNTER },
+        { SPEC_HUNTER_SURVIVAL, SURV_HUNTER },
+        { SPEC_MONK_WINDWALKER, WINDWALKER_MONK },
+        { SPEC_SHAMAN_ENHANCEMENT, ENCH_SHAMAN },
+        { SPEC_ROGUE_ASSASSINATION, ASSASIN_ROGUE },
+        { SPEC_ROGUE_COMBAT, COMBAT_ROGUE },
+        { SPEC_ROGUE_SUBTLETY, SUB_ROGUE }
+    }
+};
+
+enum e_item_evil_eye_of_galakras
+{
+    FROST_DK     = 145959,
+    UNHOLY_DK    = 145960,
+    RET_PALADIN  = 145978,
+    ARMS_WARRIOR = 145990,
+    FURY_WARRION = 145990,
+};
+
+const static std::array<std::array<uint32, 2>, 5> s_EvilEyeOfGalakrasSpells =
+{
+    {
+        { SPEC_DK_FROST, FROST_DK },
+        { SPEC_DK_UNHOLY, UNHOLY_DK },
+        { SPEC_PALADIN_RETRIBUTION, RET_PALADIN },
+        { SPEC_WARRIOR_ARMS, ARMS_WARRIOR },
+        { SPEC_WARRIOR_FURY, FURY_WARRION }
+    }
+};
+
+enum e_item_vial_of_living_corruption
+{
+    PALADIN_PROTECTION = 145976,
+    WARRIOR_PROTECTION = 145992,
+    DROOD_GUARDIAN     = 145962,
+    DK_BLOOD           = 145958,
+    MONK_BREWMASTER    = 145969
+};
+
+const static std::array<std::array<uint32, 2>, 5> s_VialOfLivingCorruption =
+{
+    {
+        { SPEC_PALADIN_PROTECTION, PALADIN_PROTECTION },
+        { SPEC_WARRIOR_PROTECTION, WARRIOR_PROTECTION },
+        { SPEC_DRUID_CAT,          DROOD_GUARDIAN     },
+        { SPEC_DK_BLOOD,           DK_BLOOD           },
+        { SPEC_MONK_BREWMASTER,    MONK_BREWMASTER    }
+    }
+};
+
+template<size_t Dimension, size_t Size>
+class spell_item_readiness_generic : public SpellScriptLoader
+{
+    typedef std::array<std::array<uint32, Dimension>, Size> Spells;
+
+public:
+    spell_item_readiness_generic(const char* scriptName, Spells const& spells) : SpellScriptLoader(scriptName), _spells(spells) { }
+
+    Spells _spells;
+
+    class spell_item_readiness_generic_AuraScript : public AuraScript
+    {
+    public:
+        spell_item_readiness_generic_AuraScript(Spells const& spells)
+            : m_castedSpell(0), m_timer(0), m_spells(spells) { }
+
+        PrepareAuraScript(spell_item_readiness_generic_AuraScript);
+
+        uint32 m_castedSpell;
+        uint32 m_timer;
+        Spells m_spells;
+
+        uint32 GetSpellIdForSpec(uint32 spec)
+        {
+            for (auto ptr : m_spells)
+            {
+                if (ptr[0] == spec)
+                    return ptr[1];
+            }
+            return 0;
+        }
+
+        void Check(AuraEffect* aurEff)
+        {
+            if (!GetCaster() || !GetCaster()->ToPlayer())
+                return;
+
+            uint32 newSpellTocast = GetSpellIdForSpec(GetCaster()->ToPlayer()->GetSpecializationId());
+            if (newSpellTocast != m_castedSpell)
+            {
+                OnRemove(aurEff, AuraEffectHandleModes::AURA_EFFECT_HANDLE_REAL);
+                OnApply(aurEff, AuraEffectHandleModes::AURA_EFFECT_HANDLE_REAL);
+            }
+        }
+
+        void OnApply(AuraEffect const* aurEff, AuraEffectHandleModes /*mode*/)
+        {
+            if (!GetCaster() || !GetCaster()->ToPlayer())
+                return;
+
+            Player* player = GetCaster()->ToPlayer();
+            
+            Item* castItem = nullptr;
+            if (aurEff->GetBase()->GetCastItemGUID())
+                castItem = player->GetItemByGuid(aurEff->GetBase()->GetCastItemGUID());
+
+            m_castedSpell = GetSpellIdForSpec(player->GetSpecializationId());
+            if (m_castedSpell)
+            {
+                int32 value = -aurEff->GetAmount();
+                player->CastCustomSpell(player, m_castedSpell, &value, nullptr, nullptr, true, castItem, aurEff, aurEff->GetCasterGUID());
+            }
+        }
+
+        void OnRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
+        {
+            if (!GetCaster())
+                return;
+
+            if (m_castedSpell)
+                GetCaster()->RemoveAura(m_castedSpell);
+        }
+
+        void OnUpdate(uint32 diff, AuraEffect* aurEff)
+        {
+            if (m_timer >= 500)
+            {
+                Check(aurEff);
+                m_timer = 0;
+            }
+            else
+                m_timer += diff;
+        }
+
+        void Register()
+        {
+            AfterEffectApply += AuraEffectApplyFn(spell_item_readiness_generic_AuraScript::OnApply, EFFECT_0, SPELL_AURA_DUMMY, AURA_EFFECT_HANDLE_REAL);
+            AfterEffectRemove += AuraEffectRemoveFn(spell_item_readiness_generic_AuraScript::OnRemove, EFFECT_0, SPELL_AURA_DUMMY, AURA_EFFECT_HANDLE_REAL);
+            OnEffectUpdate += AuraEffectUpdateFn(spell_item_readiness_generic_AuraScript::OnUpdate, EFFECT_0, SPELL_AURA_DUMMY);
+        }
+    };
+
+    AuraScript* GetAuraScript() const
+    {
+        return new spell_item_readiness_generic_AuraScript(_spells);
+    }
+};
+
+enum eWormholeTeleportSpell
+{
+    SPELL_WORMHOLE_GENERATOR_PANDARIA_TELEPORT = 126775,
+};
+
+class spell_item_wormhole_generator_pandaria : public SpellScriptLoader
+{
+    public:
+        spell_item_wormhole_generator_pandaria() : SpellScriptLoader("spell_item_wormhole_generator_pandaria") { }
+
+        class spell_item_wormhole_generator_pandaria_SpellScript : public SpellScript
+        {
+            PrepareSpellScript(spell_item_wormhole_generator_pandaria_SpellScript);
+
+            bool Load()
+            {
+                return GetCaster()->GetTypeId() == TYPEID_PLAYER;
+            }
+
+            bool Validate(SpellInfo const* /*spellEntry*/)
+            {
+                if (!sSpellMgr->GetSpellInfo(SPELL_WORMHOLE_GENERATOR_PANDARIA_TELEPORT))
+                    return false;
+                return true;
+            }
+
+            void HandleDummy(SpellEffIndex /*effIndex*/)
+            {
+                if (!GetCaster())
+                    return;
+
+                const static Position s_Positions[9] =
+                {
+                    { 2510.13f, -2126.75f, 390.61f, 3.88f},
+                    { 124.64f, 1025.29f, 194.01f, 4.62f },
+                    { -1504.79f, -433.90f, 288.27f, 0.75f },
+                    { 2090.18f, 2159.22f, 455.91f, 4.33f },
+                    { 5131.41f, 213.31f, 5.39f, 0.38f },
+                    {  3072.98f, 6120.40f, 54.60f, 0.85f },
+                    { -1508.58f, 4540.12f, 148.69f, 2.07f },
+                    { 657.33f, 411.59f, 207.81f, 5.60f },
+                    { 1208.63f, 1376.82f, 363.66f, 4.51f },
+                };
+                
+                Position const& pos = s_Positions[urand(0, 9)];
+                GetCaster()->ToPlayer()->TeleportTo(870, pos.GetPositionX(), pos.GetPositionY(), pos.GetPositionZ(), pos.GetOrientation());
+            }
+
+            void Register()
+            {
+                OnEffectHit += SpellEffectFn(spell_item_wormhole_generator_pandaria_SpellScript::HandleDummy, EFFECT_0, SPELL_EFFECT_DUMMY);
+            }
+        };
+
+        SpellScript* GetSpellScript() const
+        {
+            return new spell_item_wormhole_generator_pandaria_SpellScript();
+        }
+};
+
+class spell_item_steadfast_talisman : public SpellScriptLoader
+{
+public:
+    spell_item_steadfast_talisman() : SpellScriptLoader("spell_item_steadfast_talisman") { }
+
+    class spell_item_steadfast_talisman_AuraScript : public AuraScript
+    {
+    public:
+        spell_item_steadfast_talisman_AuraScript()
+            : m_baseAmount(0)
+        {
+        }
+
+        PrepareAuraScript(spell_item_steadfast_talisman_AuraScript);
+
+        int m_baseAmount;
+
+        void OnUpdate(AuraEffect const* aurEff)
+        {
+            if (!aurEff)
+                return;
+
+            auto base = aurEff->GetBase();
+            if (!base)
+                return;
+
+            auto eff0 = base->GetEffect(EFFECT_0);
+            eff0->ChangeAmount(eff0->GetAmount() - m_baseAmount);
+        }
+
+        bool CalculateAmount(AuraEffect const* /*auraEffect*/, int32& amount, bool& canBeRecalculated)
+        {
+            m_baseAmount = amount;
+            amount *= 10;
+            return false;
+        }
+
+        void Register()
+        {
+            OnEffectPeriodic += AuraEffectPeriodicFn(spell_item_steadfast_talisman_AuraScript::OnUpdate, EFFECT_1, SPELL_AURA_PERIODIC_DUMMY);
+            DoEffectCalcAmount += AuraEffectCalcAmountFn(spell_item_steadfast_talisman_AuraScript::CalculateAmount, EFFECT_0, SPELL_AURA_MOD_RATING);
+        }
+    };
+
+    AuraScript* GetAuraScript() const
+    {
+        return new spell_item_steadfast_talisman_AuraScript();
+    }
+};
+
+class spell_item_eye_of_the_black_prince : public SpellScriptLoader
+{
+public:
+    spell_item_eye_of_the_black_prince() : SpellScriptLoader("spell_item_eye_of_the_black_prince") { }
+
+    class spell_item_eye_of_the_black_prince_SpellScript : public SpellScript
+    {
+        PrepareSpellScript(spell_item_eye_of_the_black_prince_SpellScript);
+
+        SpellCastResult CheckCast()
+        {
+            auto item = GetExplTargetItem();
+            if (item == nullptr || item->GetTemplate() == nullptr)
+                return SpellCastResult::SPELL_FAILED_ITEM_NOT_FOUND;
+
+            ItemTemplate const* proto = item->GetTemplate();
+            if (proto->ItemLevel < 528)
+                return SpellCastResult::SPELL_FAILED_BAD_TARGETS;
+
+            switch (proto->InventoryType)
+            {
+                case INVTYPE_WEAPON:
+                case INVTYPE_RANGED:
+                case INVTYPE_2HWEAPON:
+                case INVTYPE_WEAPONMAINHAND:
+                case INVTYPE_WEAPONOFFHAND:
+                case INVTYPE_RANGEDRIGHT:
+                    break;
+                default:
+                    return SpellCastResult::SPELL_FAILED_BAD_TARGETS;
+            }
+
+            return SpellCastResult::SPELL_CAST_OK;
+        }
+
+        void Register() override
+        {
+            OnCheckCast += SpellCheckCastFn(spell_item_eye_of_the_black_prince_SpellScript::CheckCast);
+        }
+    };
+
+    SpellScript* GetSpellScript() const override
+    {
+        return new spell_item_eye_of_the_black_prince_SpellScript();
+    }
+};
+
+/// Taunt Flag Targeting - 51640 - last update: 5.4.8 18414
+class spell_taunt_flag_targeting : public SpellScriptLoader
+{
+    public:
+        spell_taunt_flag_targeting() : SpellScriptLoader("spell_taunt_flag_targeting") {}
+
+        class spell_taunt_flag_targeting_SpellScript : public SpellScript
+        {
+            PrepareSpellScript(spell_taunt_flag_targeting_SpellScript);
+
+            Position m_BestTargetPos;
+            char const* m_BestTargetName = nullptr;
+            std::size_t m_BestTargetNameLength = 0;
+
+            SpellCastResult CheckCast()
+            {
+                /// Used to improve error message
+                bool l_FoundCorpse = false;
+                bool l_InFrontOfMe = false;
+                if (Player* l_Caster = GetCaster()->ToPlayer())
+                {
+                    float l_SearchDist = GetSpellInfo()->Effects[SpellEffIndex::EFFECT_0].CalcRadius(l_Caster);
+
+                    std::list<WorldObject*> l_Targets;
+                    JadeCore::AllWorldObjectsInRange l_Check(l_Caster, l_SearchDist);
+                    JadeCore::WorldObjectListSearcher<JadeCore::AllWorldObjectsInRange> l_Searcher(l_Caster, l_Targets, l_Check);
+                    l_Caster->VisitNearbyObject(l_SearchDist, l_Searcher);
+
+                    Position l_CasterPos;
+                    l_Caster->GetPosition(&l_CasterPos);
+
+                    for (auto l_It = l_Targets.begin(); l_It != l_Targets.end(); ++l_It)
+                    {
+                        /// Either we have a corpse, either we have a player
+                        if (Corpse* l_Corpse = (*l_It)->ToCorpse())
+                        {
+                            if (Player* l_Owner = ObjectAccessor::FindPlayer(l_Corpse->GetOwnerGUID()))
+                            {
+                                if (l_Owner->GetGUID() == l_Caster->GetGUID())
+                                    continue;
+
+                                l_FoundCorpse = true;
+
+                                if (!l_Caster->isInFront(l_Corpse)) ///< Only corpses in front of us
+                                    continue;
+
+                                l_InFrontOfMe = true;
+
+                                if (m_BestTargetName && m_BestTargetPos.GetExactDistSq(&l_CasterPos) < l_Corpse->GetExactDistSq(&l_CasterPos))
+                                    continue;
+
+                                if (l_Caster->GetReactionTo(l_Owner) > REP_NEUTRAL || l_Owner->GetReactionTo(l_Caster) > REP_NEUTRAL) ///< Only enemies corpses
+                                    continue;
+
+                                l_Corpse->GetPosition(&m_BestTargetPos);
+
+                                m_BestTargetName = l_Owner->GetName();
+                                m_BestTargetNameLength = l_Owner->GetNameLength();
+                            }
+                        }
+                        else if (Player* l_Player = (*l_It)->ToPlayer())
+                        {
+                            if (l_Player->GetGUID() == l_Caster->GetGUID())
+                                continue;
+
+                            if (l_Player->isAlive()) ///< Only corpses
+                                continue;
+
+                            /// Skips ghosts
+                            if (l_Player->HasAuraType(SPELL_AURA_GHOST))
+                                continue;
+
+                            l_FoundCorpse = true;
+
+                            if (!l_Caster->isInFront(l_Player))
+                                continue;
+
+                            l_InFrontOfMe = true;
+
+                            /// Is this corpse closer?
+                            if (m_BestTargetName && m_BestTargetPos.GetExactDistSq(&l_CasterPos) < l_Player->GetExactDistSq(&l_CasterPos))
+                                continue;
+
+                            if (l_Caster->GetReactionTo(l_Player) > REP_NEUTRAL || l_Player->GetReactionTo(l_Caster) > REP_NEUTRAL) ///< Only enemies corpses
+                                continue;
+
+                            l_Player->GetPosition(&m_BestTargetPos);
+
+                            m_BestTargetName = l_Player->GetName();
+                            m_BestTargetNameLength = l_Player->GetNameLength();
+                        }
+                    }
+                }
+
+                if (!m_BestTargetName)
+                {
+                    if (l_FoundCorpse)
+                        return (l_InFrontOfMe) ? SpellCastResult::SPELL_FAILED_BAD_TARGETS : SpellCastResult::SPELL_FAILED_NOT_INFRONT;
+                    else
+                    {
+                        SetCustomCastResultMessage(SpellCustomErrors::SPELL_CUSTOM_ERROR_NO_NEARBY_CORPSES);
+                        return SpellCastResult::SPELL_FAILED_CUSTOM_ERROR;
+                    }
+                }
+
+                return SpellCastResult::SPELL_CAST_OK;
+            }
+
+            void HandleCast(SpellEffIndex p_Index)
+            {
+                if (Player* l_Caster = GetCaster()->ToPlayer())
+                {
+                    if (m_BestTargetName)
+                    {
+                        l_Caster->CastSpell(m_BestTargetPos, 51657, true);
+                        l_Caster->AddSpellCooldown(GetSpellInfo()->Id, 0, 60 * IN_MILLISECONDS);
+                        l_Caster->SendSpellCooldown(GetSpellInfo()->Id, 60 * IN_MILLISECONDS);
+
+                        if (WorldSession* l_Session = l_Caster->GetSession())
+                        {
+                            char const* l_TauntText = l_Session->GetTrinityString(LangTauntFlag);
+                            std::size_t l_TauntTextLength = std::strlen(l_TauntText);
+
+                            std::string l_Text;
+                            l_Text.reserve(l_TauntTextLength + m_BestTargetNameLength);
+                            l_Text.append(l_TauntText, l_TauntTextLength);
+                            l_Text.append(m_BestTargetName, m_BestTargetNameLength);
+
+                            l_Caster->TextEmote(l_Text);
+                        }
+                    }
+                }
+            }
+
+            void Register() override
+            {
+                OnCheckCast += SpellCheckCastFn(spell_taunt_flag_targeting_SpellScript::CheckCast);
+                OnEffectLaunch += SpellEffectFn(spell_taunt_flag_targeting_SpellScript::HandleCast, SpellEffIndex::EFFECT_0, SpellEffects::SPELL_EFFECT_DUMMY);
+            }
+        };
+
+        SpellScript* GetSpellScript() const
+        {
+            return new spell_taunt_flag_targeting_SpellScript;
+        }
+};
+
+enum eCleaveSpell
+{
+    SPELL_CLEAVE_SPREAD = 146137
+};
+
+// 146136 - Cleave
+class spell_item_fusion_fire_core : public SpellScriptLoader
+{
+public:
+    spell_item_fusion_fire_core() : SpellScriptLoader("spell_item_fusion_fire_core") { }
+
+    class spell_item_fusion_fire_core_AuraScript : public AuraScript
+    {
+        PrepareAuraScript(spell_item_fusion_fire_core_AuraScript);
+
+        void HandleProc(AuraEffect const* p_AurEff, ProcEventInfo& p_ProcInfo)
+        {
+            Unit* l_Caster = GetCaster();
+            if (!l_Caster)
+                return;
+
+            if (DamageInfo* l_DamageInfos = p_ProcInfo.GetDamageInfo())
+            {
+                int32 l_Damages = l_DamageInfos->GetDamage();
+                l_Caster->CastCustomSpell(l_Caster, SPELL_CLEAVE_SPREAD, &l_Damages, NULL, NULL, true);
+            }
+        }
+
+        void Register() override
+        {
+            OnEffectProc += AuraEffectProcFn(spell_item_fusion_fire_core_AuraScript::HandleProc, SpellEffIndex::EFFECT_0, AuraType::SPELL_AURA_DUMMY);
+        }
+    };
+
+    AuraScript* GetAuraScript() const override
+    {
+        return new spell_item_fusion_fire_core_AuraScript();
+    }
+};
+
+enum eLifeStealSpell
+{
+    SPELL_LIFE_STEAL = 146347
+};
+
+// 146346 - Life Steal
+class spell_item_juggernault_focusing_crystal : public SpellScriptLoader
+{
+    public:
+        spell_item_juggernault_focusing_crystal() : SpellScriptLoader("spell_item_juggernault_focusing_crystal") { }
+
+        class spell_item_juggernault_focusing_crystal_AuraScript : public AuraScript
+        {
+            PrepareAuraScript(spell_item_juggernault_focusing_crystal_AuraScript);
+
+            void OnProc(AuraEffect const* aurEff, ProcEventInfo& procInfo)
+            {
+                Unit* l_Caster = GetCaster();
+                if (!l_Caster)
+                    return;
+
+                if (DamageInfo* l_DamageInfo = procInfo.GetDamageInfo())
+                {
+                    int32 l_Healing = l_DamageInfo->GetDamage() * 0.0235f;
+                    l_Caster->CastCustomSpell(l_Caster, SPELL_LIFE_STEAL, &l_Healing, NULL, NULL, true);
+                }
+            }
+
+            void Register() override
+            {
+                OnEffectProc += AuraEffectProcFn(spell_item_juggernault_focusing_crystal_AuraScript::OnProc, EFFECT_0, SPELL_AURA_DUMMY);
+            }
+        };
+
+        AuraScript* GetAuraScript() const override
+        {
+            return new spell_item_juggernault_focusing_crystal_AuraScript();
+        }
+};
+
+enum eMultiStrikeSpell
+{
+    SPELL_MULTI_STRIKE      = 146061,
+    SPELL_MULTI_STRIKE_HEAL = 146177
+};
+
+// 146059 - Multistrike
+class spell_item_multistrike : public SpellScriptLoader
+{
+    public:
+        spell_item_multistrike() : SpellScriptLoader("spell_item_multistrike") { }
+
+        class spell_item_multistrike_AuraScript : public AuraScript
+        {
+            PrepareAuraScript(spell_item_multistrike_AuraScript);
+
+            void OnProc(AuraEffect const* aurEff, ProcEventInfo& procInfo)
+            {
+                Unit* l_Caster = GetCaster();
+                if (!l_Caster)
+                    return;
+
+                if (DamageInfo* l_DmgInfo = procInfo.GetDamageInfo())
+                {
+                    int32 l_Damages = l_DmgInfo->GetDamage() / 3;
+                    l_Caster->CastCustomSpell(l_Caster, SPELL_MULTI_STRIKE, &l_Damages, NULL, NULL, true);
+                }
+            }
+
+            void Register() override
+            {
+                OnEffectProc += AuraEffectProcFn(spell_item_multistrike_AuraScript::OnProc, EFFECT_0, SPELL_AURA_DUMMY);
+            }
+        };
+
+        AuraScript* GetAuraScript() const override
+        {
+            return new spell_item_multistrike_AuraScript();
+        }
+};
+
+// 146176 - Multistrike (healing version)
+class spell_item_multistrike_heal : public SpellScriptLoader
+{
+    public:
+        spell_item_multistrike_heal() : SpellScriptLoader("spell_item_multistrike_heal") { }
+
+        class spell_item_multistrike_heal_AuraScript : public AuraScript
+        {
+            PrepareAuraScript(spell_item_multistrike_heal_AuraScript);
+
+            void OnProc(AuraEffect const* aurEff, ProcEventInfo& procInfo)
+            {
+                Unit* l_Caster = GetCaster();
+                if (!l_Caster)
+                    return;
+
+                if (HealInfo* l_HealInfos = procInfo.GetHealInfo())
+                {
+                    int32 l_Heal = l_HealInfos->GetHeal() / 3;
+                    l_Caster->CastCustomSpell(l_Caster, SPELL_MULTI_STRIKE_HEAL, &l_Heal, NULL, NULL, true);
+                }
+            }
+
+            void Register() override
+            {
+                OnEffectProc += AuraEffectProcFn(spell_item_multistrike_heal_AuraScript::OnProc, EFFECT_0, SPELL_AURA_DUMMY);
+            }
+        };
+
+        AuraScript* GetAuraScript() const override
+        {
+            return new spell_item_multistrike_heal_AuraScript();
+        }
+};
+
+enum LegendaryGemStackSpells
+{
+    SPELL_LIGHTNING_STRIKE_AURA              = 137595,  // Lightning Strike Charges Trigger
+    SPELL_LIGHTNING_STRIKE_STACK             = 137596,
+    SPELL_LIGHTNING_STRIKE_TRIGGER           = 137597,
+};
+
+class spell_item_legendary_gem_stack : public SpellScriptLoader
+{
+public:
+    spell_item_legendary_gem_stack(char const* scriptName, uint32 stackSpell, uint32 triggerSpell) : SpellScriptLoader(scriptName),
+        _stackSpell(stackSpell), _triggerSpell(triggerSpell)
+    {
+    }
+
+    class spell_item_legendary_gem_stack_AuraScript : public AuraScript
+    {
+        PrepareAuraScript(spell_item_legendary_gem_stack_AuraScript);
+
+    public:
+        spell_item_legendary_gem_stack_AuraScript(uint32 stackSpell, uint32 triggerSpell) : _stackSpell(stackSpell), _triggerSpell(triggerSpell)
+        {
+        }
+
+        bool Validate(SpellInfo const* /*spellInfo*/) override
+        {
+            if (!sSpellMgr->GetSpellInfo(_stackSpell) || !sSpellMgr->GetSpellInfo(_triggerSpell))
+                return false;
+            return true;
+        }
+
+        void HandleProc(AuraEffect const* aurEff, ProcEventInfo& eventInfo)
+        {
+            PreventDefaultAction();
+
+            Unit* caster = eventInfo.GetActor();
+
+            caster->CastSpell(caster, _stackSpell, true, nullptr, aurEff); // cast the stack
+
+            Aura* dummy = caster->GetAura(_stackSpell); // retrieve aura
+
+            //dont do anything if it's not the right amount of stacks;
+            if (!dummy || dummy->GetStackAmount() < aurEff->GetAmount())
+                return;
+
+            // if right amount, remove the aura and cast real trigger
+            caster->RemoveAurasDueToSpell(_stackSpell);
+            if (Unit* target = eventInfo.GetActionTarget())
+                caster->CastSpell(target, _triggerSpell, true, nullptr, aurEff);
+        }
+
+        void Register() override
+        {
+            OnEffectProc += AuraEffectProcFn(spell_item_legendary_gem_stack_AuraScript::HandleProc, EFFECT_0, SPELL_AURA_PROC_TRIGGER_SPELL);
+        }
+
+    private:
+        uint32 _stackSpell;
+        uint32 _triggerSpell;
+    };
+
+    AuraScript* GetAuraScript() const override
+    {
+        return new spell_item_legendary_gem_stack_AuraScript(_stackSpell, _triggerSpell);
+    }
+
+private:
+    uint32 _stackSpell;
+    uint32 _triggerSpell;
 };
 
 void AddSC_item_spell_scripts()
 {
+    new spell_item_eye_of_the_black_prince();
+    new spell_item_readiness_generic<2, 9>("spell_item_assurance_of_consequence", s_AssuranceOfConsequenceSpells);
+    new spell_item_readiness_generic<2, 5>("spell_item_evil_eye_of_galakras", s_EvilEyeOfGalakrasSpells);
+    new spell_item_readiness_generic<2, 5>("spell_item_vial_of_living_corruption", s_VialOfLivingCorruption);
+    new spell_drums_of_rage();
     // 23074 Arcanite Dragonling
     new spell_item_trigger_spell("spell_item_arcanite_dragonling", SPELL_ARCANITE_DRAGONLING);
     // 23133 Gnomish Battle Chicken
@@ -2588,8 +3804,23 @@ void AddSC_item_spell_scripts()
     new spell_item_big_cauldron_of_battle();
     new spell_item_stay_of_execution();
     new spell_item_flameseers_staff_flamebreaker();
-    new spell_item_endurance_of_niuzao();
-    new spell_item_flurry_of_xuen();
-    new spell_item_essence_of_yulon();
-    new spell_item_essence_of_yulon_dmg();
+    new spell_item_jards_peculiar_energy_source();
+    new spell_endurance_of_niuzao_absorb();
+    new spell_item_drinks();
+    new spell_item_blades_of_renataki();
+    new spell_item_spark_of_zandalar();
+    new spell_item_rune_of_reorigination();
+    new spell_aura_reorigination();
+    new spell_item_zandalari_warding();
+    new spell_item_ancient_knowledge();
+    new spell_item_wormhole_generator_pandaria();
+    new spell_item_steadfast_talisman();
+    new spell_item_bilgewater_molotov();
+    new spell_item_universal_remote();
+    new spell_taunt_flag_targeting();
+    new spell_item_fusion_fire_core();
+    new spell_item_juggernault_focusing_crystal();
+    new spell_item_multistrike();
+    new spell_item_multistrike_heal();
+    new spell_item_legendary_gem_stack("spell_item_capacitive_primal_diamond", SPELL_LIGHTNING_STRIKE_STACK, SPELL_LIGHTNING_STRIKE_TRIGGER);
 }
